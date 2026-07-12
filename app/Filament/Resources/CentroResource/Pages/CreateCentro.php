@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCentro extends CreateRecord
 {
     protected static string $resource = CentroResource::class;
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Centro registado';
+    }
 }

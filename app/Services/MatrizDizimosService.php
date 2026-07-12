@@ -74,7 +74,7 @@ class MatrizDizimosService
 
             $segmento = match (true) {
                 $totalPagos === 12 => 'Assíduo',
-                $totalPagos === 0 => 'Inativo',
+                $totalPagos === 0 => 'Inactivo',
                 $totalPagos <= 6 => 'Irregular',
                 default => null,
             };

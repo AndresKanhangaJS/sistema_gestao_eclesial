@@ -59,7 +59,7 @@
                                 <x-filament::badge :color="match($linha['segmento']) {
                                     'Assíduo' => 'success',
                                     'Irregular' => 'warning',
-                                    'Inativo' => 'danger',
+                                    'Inactivo' => 'danger',
                                 }">
                                     {{ $linha['segmento'] }}
                                 </x-filament::badge>

@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateParoquia extends CreateRecord
 {
     protected static string $resource = ParoquiaResource::class;
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Paróquia registada';
+    }
 }

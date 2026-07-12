@@ -100,18 +100,20 @@ class MatrizDizimos extends Page implements HasForms, HasActions
                     ->columns(3)
                     ->required(),
                 Forms\Components\TextInput::make('valor')
+                    ->label('Valor')
                     ->required()
                     ->numeric()
                     ->minValue(0.01)
                     ->prefix('Kz'),
                 Forms\Components\Select::make('metodo_pagamento_id')
-                    ->label('Método de pagamento')
+                    ->label('Método de Pagamento')
                     ->options(fn () => MetodoPagamento::pluck('nome', 'id'))
                     ->required(),
                 Forms\Components\Select::make('banco_id')
                     ->label('Banco')
                     ->options(fn () => Banco::pluck('nome_banco', 'id')),
                 Forms\Components\DatePicker::make('data_movimento')
+                    ->label('Data do Movimento')
                     ->required()
                     ->default(now()),
             ])
@@ -164,7 +166,7 @@ class MatrizDizimos extends Page implements HasForms, HasActions
         unset($this->matriz);
 
         Notification::make()
-            ->title("Lançados {$criados} mes(es); {$ignorados} já estavam pagos e foram ignorados.")
+            ->title("Lançados {$criados} mês(es); {$ignorados} já estavam pagos e foram ignorados.")
             ->success()
             ->send();
     }

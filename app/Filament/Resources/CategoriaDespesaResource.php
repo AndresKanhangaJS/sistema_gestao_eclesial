@@ -33,11 +33,13 @@ class CategoriaDespesaResource extends Resource
                     ->required()
                     ->maxLength(255),
                 Forms\Components\Textarea::make('descricao')
+                    ->label('Descrição')
                     ->columnSpanFull(),
                 Forms\Components\Select::make('status')
+                    ->label('Estado')
                     ->options([
-                        'ativo' => 'Ativo',
-                        'inativo' => 'Inativo',
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
                     ])
                     ->required()
                     ->default('ativo'),
@@ -52,11 +54,13 @@ class CategoriaDespesaResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('descricao')
+                    ->label('Descrição')
                     ->limit(50),
                 Tables\Columns\TextColumn::make('movimentos_count')
                     ->label('Despesas lançadas')
                     ->counts('movimentos'),
                 Tables\Columns\BadgeColumn::make('status')
+                    ->label('Estado')
                     ->colors([
                         'success' => 'ativo',
                         'danger' => 'inativo',
@@ -64,9 +68,10 @@ class CategoriaDespesaResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
                     ->options([
-                        'ativo' => 'Ativo',
-                        'inativo' => 'Inativo',
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
                     ]),
             ])
             ->actions([

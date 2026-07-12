@@ -16,4 +16,9 @@ class EditCentro extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Centro actualizado';
+    }
 }

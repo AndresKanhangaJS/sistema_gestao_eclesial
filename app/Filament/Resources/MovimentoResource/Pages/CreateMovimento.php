@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateMovimento extends CreateRecord
 {
     protected static string $resource = MovimentoResource::class;
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Movimento registado';
+    }
 }

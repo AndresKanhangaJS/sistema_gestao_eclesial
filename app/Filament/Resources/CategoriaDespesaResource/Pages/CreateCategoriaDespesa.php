@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCategoriaDespesa extends CreateRecord
 {
     protected static string $resource = CategoriaDespesaResource::class;
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Categoria de Despesa registada';
+    }
 }

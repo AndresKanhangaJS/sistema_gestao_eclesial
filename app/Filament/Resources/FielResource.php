@@ -35,6 +35,7 @@ class FielResource extends Resource
                         Forms\Components\Tabs\Tab::make('Dados Pessoais')
                             ->schema([
                                 Forms\Components\Select::make('paroquia_id')
+                                    ->label('Paróquia')
                                     ->relationship('paroquia', 'nome')
                                     ->required()
                                     ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
@@ -43,15 +44,17 @@ class FielResource extends Resource
                                     ->required()
                                     ->maxLength(255),
                                 Forms\Components\TextInput::make('codigo_dizimista')
-                                    ->label('Código de dizimista')
+                                    ->label('Código de Dizimista')
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->maxLength(255),
-                                Forms\Components\DatePicker::make('data_nascimento'),
+                                Forms\Components\DatePicker::make('data_nascimento')
+                                    ->label('Data de Nascimento'),
                                 Forms\Components\Select::make('status')
+                                    ->label('Estado')
                                     ->options([
-                                        'ativo' => 'Ativo',
-                                        'inativo' => 'Inativo',
+                                        'ativo' => 'Activo',
+                                        'inativo' => 'Inactivo',
                                     ])
                                     ->required()
                                     ->default('ativo'),
@@ -88,20 +91,23 @@ class FielResource extends Resource
                         return $centro?->nome ?? 'Não vinculado';
                     }),
                 Tables\Columns\BadgeColumn::make('status')
+                    ->label('Estado')
                     ->colors([
                         'success' => 'ativo',
                         'danger' => 'inativo',
                     ]),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Criado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
                     ->options([
-                        'ativo' => 'Ativo',
-                        'inativo' => 'Inativo',
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
                     ]),
                 Tables\Filters\TrashedFilter::make(),
             ])

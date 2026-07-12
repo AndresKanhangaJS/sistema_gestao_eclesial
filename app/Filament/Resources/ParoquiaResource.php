@@ -39,9 +39,10 @@ class ParoquiaResource extends Resource
                                     ->required()
                                     ->maxLength(255),
                                 Forms\Components\Select::make('status')
+                                    ->label('Estado')
                                     ->options([
-                                        'ativo' => 'Ativo',
-                                        'inativo' => 'Inativo',
+                                        'ativo' => 'Activo',
+                                        'inativo' => 'Inactivo',
                                     ])
                                     ->required()
                                     ->default('ativo'),
@@ -52,9 +53,11 @@ class ParoquiaResource extends Resource
                                     ->required()
                                     ->maxLength(255),
                                 Forms\Components\TextInput::make('responsavel')
+                                    ->label('Responsável')
                                     ->required()
                                     ->maxLength(255),
                                 Forms\Components\TextInput::make('email_contato')
+                                    ->label('Email de Contacto')
                                     ->email()
                                     ->required()
                                     ->maxLength(255),
@@ -78,20 +81,23 @@ class ParoquiaResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('telefone'),
                 Tables\Columns\BadgeColumn::make('status')
+                    ->label('Estado')
                     ->colors([
                         'success' => 'ativo',
                         'danger' => 'inativo',
                     ]),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Criado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
                     ->options([
-                        'ativo' => 'Ativo',
-                        'inativo' => 'Inativo',
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
                     ]),
             ])
             ->actions([

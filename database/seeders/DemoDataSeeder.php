@@ -89,7 +89,7 @@ class DemoDataSeeder extends Seeder
     /** @return array<int, CategoriaDespesa> */
     private function seedCategoriasDespesa(Paroquia $paroquia): array
     {
-        $nomes = ['Manutenção', 'Eletricidade e Água', 'Material de Escritório', 'Transporte', 'Eventos Paroquiais'];
+        $nomes = ['Manutenção', 'Electricidade e Água', 'Material de Escritório', 'Transporte', 'Eventos Paroquiais'];
 
         return collect($nomes)
             ->map(fn ($nome) => CategoriaDespesa::withoutGlobalScopes()->firstOrCreate(
@@ -162,7 +162,7 @@ class DemoDataSeeder extends Seeder
 
     /**
      * Assiduos: 12/12 aprovados. Irregulares: 1-6 aprovados (+ alguns
-     * pendente/rejeitado extra, para os ecras de conciliacao). Inativos e
+     * pendente/rejeitado extra, para os ecras de conciliacao). Inactivos e
      * nao_vinculados: sem nenhum dizimo.
      */
     private function seedDizimos(array $fieis, User $tesoureiro, MetodoPagamento $numerario): void

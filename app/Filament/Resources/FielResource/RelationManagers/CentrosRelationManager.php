@@ -52,7 +52,7 @@ class CentrosRelationManager extends RelationManager
                     ->label('Principal')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('pivot.motivo_transferencia')
-                    ->label('Motivo transferência')
+                    ->label('Motivo da Transferência')
                     ->limit(30),
             ])
             ->headerActions([
@@ -61,9 +61,11 @@ class CentrosRelationManager extends RelationManager
                     ->form(fn (AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Forms\Components\DatePicker::make('data_inicio')
+                            ->label('Data de Início')
                             ->required()
                             ->default(now()),
                         Forms\Components\Toggle::make('principal')
+                            ->label('Principal')
                             ->default(false),
                     ]),
             ])
@@ -80,6 +82,7 @@ class CentrosRelationManager extends RelationManager
                             )
                             ->required(),
                         Forms\Components\DatePicker::make('data_transferencia')
+                            ->label('Data da Transferência')
                             ->required()
                             ->default(now()),
                         Forms\Components\Textarea::make('motivo')
@@ -102,10 +105,12 @@ class CentrosRelationManager extends RelationManager
                     ->icon('heroicon-o-pencil')
                     ->visible(fn () => self::podeEscrever())
                     ->form([
-                        Forms\Components\DatePicker::make('data_fim'),
-                        Forms\Components\Toggle::make('principal'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Data de Fim'),
+                        Forms\Components\Toggle::make('principal')
+                            ->label('Principal'),
                         Forms\Components\Textarea::make('motivo_transferencia')
-                            ->label('Motivo transferência'),
+                            ->label('Motivo da Transferência'),
                     ])
                     ->fillForm(fn ($record): array => [
                         'data_fim' => $record->pivot->data_fim,

@@ -30,6 +30,7 @@ class CentroResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Select::make('paroquia_id')
+                    ->label('Paróquia')
                     ->relationship('paroquia', 'nome')
                     ->required()
                     // So admin_geral escolhe a paroquia; as outras roles ficam
@@ -40,13 +41,16 @@ class CentroResource extends Resource
                     ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('localizacao')
+                    ->label('Localização')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('responsavel_local')
+                    ->label('Responsável Local')
                     ->maxLength(255),
                 Forms\Components\Select::make('status')
+                    ->label('Estado')
                     ->options([
-                        'ativo' => 'Ativo',
-                        'inativo' => 'Inativo',
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
                     ])
                     ->required()
                     ->default('ativo'),
@@ -66,24 +70,29 @@ class CentroResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('localizacao')
+                    ->label('Localização')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('responsavel_local')
+                    ->label('Responsável Local')
                     ->searchable(),
                 Tables\Columns\BadgeColumn::make('status')
+                    ->label('Estado')
                     ->colors([
                         'success' => 'ativo',
                         'danger' => 'inativo',
                     ]),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Criado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
                     ->options([
-                        'ativo' => 'Ativo',
-                        'inativo' => 'Inativo',
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
                     ]),
                 Tables\Filters\SelectFilter::make('paroquia_id')
                     ->label('Paróquia')

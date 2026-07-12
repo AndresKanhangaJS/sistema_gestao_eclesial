@@ -16,4 +16,9 @@ class EditParoquia extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Paróquia actualizada';
+    }
 }

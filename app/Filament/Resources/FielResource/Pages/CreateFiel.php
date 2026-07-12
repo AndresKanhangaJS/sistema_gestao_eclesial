@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateFiel extends CreateRecord
 {
     protected static string $resource = FielResource::class;
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Fiel registado';
+    }
 }

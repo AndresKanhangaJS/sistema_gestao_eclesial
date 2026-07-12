@@ -21,11 +21,11 @@ class EnsureParoquiaScope
         $exigeParoquia = $user && ($user->hasRole('tesoureiro_paroquial') || $user->hasRole('tesoureiro_centro'));
 
         if ($exigeParoquia && $user->paroquia_id === null) {
-            abort(403, 'Utilizador sem paroquia atribuida.');
+            abort(403, 'Utilizador sem paróquia atribuída.');
         }
 
         if ($user && $user->hasRole('tesoureiro_centro') && $user->centro_id === null) {
-            abort(403, 'Utilizador sem centro atribuido.');
+            abort(403, 'Utilizador sem centro atribuído.');
         }
 
         return $next($request);

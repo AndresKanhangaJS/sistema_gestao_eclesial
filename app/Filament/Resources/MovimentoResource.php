@@ -42,6 +42,7 @@ class MovimentoResource extends Resource
                         Forms\Components\Tabs\Tab::make('Lançamento')
                             ->schema([
                                 Forms\Components\Select::make('tipo')
+                                    ->label('Tipo')
                                     ->options([
                                         TipoMovimento::Dizimo->value => 'Dízimo',
                                         TipoMovimento::Ofertorio->value => 'Ofertório',
@@ -51,26 +52,31 @@ class MovimentoResource extends Resource
                                     ->required()
                                     ->live(),
                                 Forms\Components\Select::make('centro_id')
+                                    ->label('Centro')
                                     ->relationship('centro', 'nome')
                                     ->required()
                                     ->visible(fn () => ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false))
                                     ->default(fn () => Auth::user()?->centro_id),
                                 Forms\Components\Select::make('fiel_id')
+                                    ->label('Fiel')
                                     ->relationship('fiel', 'nome')
                                     ->searchable()
                                     ->preload()
                                     ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
                                     ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
                                 Forms\Components\Select::make('categoria_despesa_id')
+                                    ->label('Categoria de Despesa')
                                     ->relationship('categoriaDespesa', 'nome')
                                     ->required(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value)
                                     ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value),
                                 Forms\Components\TextInput::make('valor')
+                                    ->label('Valor')
                                     ->required()
                                     ->numeric()
                                     ->minValue(0.01)
                                     ->prefix('Kz'),
                                 Forms\Components\DatePicker::make('data_movimento')
+                                    ->label('Data do Movimento')
                                     ->required()
                                     ->default(now()),
                                 Forms\Components\Select::make('ano_competencia')
@@ -114,12 +120,15 @@ class MovimentoResource extends Resource
                         Forms\Components\Tabs\Tab::make('Pagamento')
                             ->schema([
                                 Forms\Components\Select::make('metodo_pagamento_id')
+                                    ->label('Método de Pagamento')
                                     ->relationship('metodoPagamento', 'nome')
                                     ->required()
                                     ->live(),
                                 Forms\Components\Select::make('banco_id')
+                                    ->label('Banco')
                                     ->relationship('banco', 'nome_banco'),
                                 Forms\Components\TextInput::make('numero_referencia_bancaria')
+                                    ->label('Número de Referência Bancária')
                                     ->unique(ignoreRecord: true)
                                     ->maxLength(255),
                                 Forms\Components\FileUpload::make('comprovativo_path')
@@ -142,6 +151,7 @@ class MovimentoResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\BadgeColumn::make('tipo')
+                    ->label('Tipo')
                     ->formatStateUsing(fn (TipoMovimento $state) => match ($state) {
                         TipoMovimento::Dizimo => 'Dízimo',
                         TipoMovimento::Ofertorio => 'Ofertório',
@@ -155,12 +165,15 @@ class MovimentoResource extends Resource
                     ->label('Fiel')
                     ->placeholder('—'),
                 Tables\Columns\TextColumn::make('valor')
+                    ->label('Valor')
                     ->money('AOA')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('data_movimento')
+                    ->label('Data')
                     ->date()
                     ->sortable(),
                 Tables\Columns\BadgeColumn::make('status_conciliacao')
+                    ->label('Estado da Conciliação')
                     ->formatStateUsing(fn (StatusConciliacao $state) => match ($state) {
                         StatusConciliacao::Pendente => 'Pendente',
                         StatusConciliacao::Aprovado => 'Aprovado',
@@ -178,6 +191,7 @@ class MovimentoResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('tipo')
+                    ->label('Tipo')
                     ->options([
                         TipoMovimento::Dizimo->value => 'Dízimo',
                         TipoMovimento::Ofertorio->value => 'Ofertório',
@@ -185,6 +199,7 @@ class MovimentoResource extends Resource
                         TipoMovimento::DespesaCentro->value => 'Despesa de Centro',
                     ]),
                 Tables\Filters\SelectFilter::make('status_conciliacao')
+                    ->label('Estado da Conciliação')
                     ->options([
                         StatusConciliacao::Pendente->value => 'Pendente',
                         StatusConciliacao::Aprovado->value => 'Aprovado',
