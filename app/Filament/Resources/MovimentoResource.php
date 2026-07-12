@@ -124,7 +124,7 @@ class MovimentoResource extends Resource
                                     ->maxLength(255),
                                 Forms\Components\FileUpload::make('comprovativo_path')
                                     ->label('Comprovativo')
-                                    ->disk('s3')
+                                    ->disk(config('filesystems.default'))
                                     ->directory('comprovativos')
                                     ->getUploadedFileNameForStorageUsing(
                                         fn ($file) => Str::uuid() . '.' . $file->getClientOriginalExtension()
@@ -200,17 +200,19 @@ class MovimentoResource extends Resource
                 Tables\Actions\Action::make('verComprovativo')
                     ->label('Ver comprovativo')
                     ->icon('heroicon-o-paper-clip')
-                    // So aparece se houver ficheiro E o disco s3 estiver mesmo
-                    // configurado (bucket definido) — gerar a URL assinada
-                    // falha (e rebentaria o render da tabela) sem isso.
+                    // So aparece se houver ficheiro E o disco activo estiver
+                    // mesmo utilizavel (o s3 exige bucket configurado —
+                    // gerar a URL assinada falha, e rebentaria o render da
+                    // tabela, sem isso).
                     ->visible(fn (Movimento $record) => filled($record->comprovativo_path)
-                        && filled(config('filesystems.disks.s3.bucket')))
+                        && (config('filesystems.default') !== 's3' || filled(config('filesystems.disks.s3.bucket'))))
                     ->url(function (Movimento $record) {
+                        $disk = config('filesystems.default');
+
                         try {
-                            return Storage::disk('s3')->temporaryUrl(
-                                $record->comprovativo_path,
-                                now()->addMinutes(60)
-                            );
+                            return $disk === 's3'
+                                ? Storage::disk($disk)->temporaryUrl($record->comprovativo_path, now()->addMinutes(60))
+                                : Storage::disk($disk)->url($record->comprovativo_path);
                         } catch (\Throwable $e) {
                             return null;
                         }
