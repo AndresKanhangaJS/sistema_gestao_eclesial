@@ -9,11 +9,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Movimento extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use LogsActivity;
 
     protected $fillable = [
         'paroquia_id',
@@ -46,6 +49,14 @@ class Movimento extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(new ParoquiaScope);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['valor', 'status_conciliacao', 'motivo_rejeicao', 'tipo'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function paroquia(): BelongsTo

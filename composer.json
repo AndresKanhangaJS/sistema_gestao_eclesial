@@ -12,6 +12,7 @@
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
         "pxlrbt/filament-excel": "^2.5",
+        "spatie/browsershot": "^5.4",
         "spatie/laravel-activitylog": "^4.0",
         "spatie/laravel-pdf": "^2.12"
     },

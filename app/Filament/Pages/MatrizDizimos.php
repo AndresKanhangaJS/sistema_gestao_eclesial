@@ -2,14 +2,13 @@
 
 namespace App\Filament\Pages;
 
-use App\Enums\StatusConciliacao;
 use App\Enums\TipoMovimento;
 use App\Models\Banco;
 use App\Models\Centro;
 use App\Models\Fiel;
 use App\Models\MetodoPagamento;
 use App\Models\Movimento;
-use Carbon\Carbon;
+use App\Services\MatrizDizimosService;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -82,77 +81,7 @@ class MatrizDizimos extends Page implements HasForms, HasActions
             return [];
         }
 
-        $inicioAno = Carbon::createFromDate($this->ano, 1, 1)->startOfDay();
-        $fimAno = Carbon::createFromDate($this->ano, 12, 31)->endOfDay();
-        $centroId = $this->centroId;
-
-        // Fieis com qualquer vinculo (activo ou historico) a este centro
-        // sobreposto ao ano seleccionado.
-        $fieis = Fiel::whereHas('centros', function ($q) use ($centroId, $inicioAno, $fimAno) {
-            $q->where('centros.id', $centroId)
-                ->where('fiel_centros.data_inicio', '<=', $fimAno)
-                ->where(function ($q2) use ($inicioAno) {
-                    $q2->whereNull('fiel_centros.data_fim')
-                        ->orWhere('fiel_centros.data_fim', '>=', $inicioAno);
-                });
-        })
-            ->with(['centros' => function ($q) use ($centroId) {
-                $q->where('centros.id', $centroId);
-            }])
-            ->orderBy('nome')
-            ->get();
-
-        $pagos = Movimento::where('centro_id', $centroId)
-            ->where('tipo', TipoMovimento::Dizimo)
-            ->where('ano_competencia', $this->ano)
-            ->where('status_conciliacao', StatusConciliacao::Aprovado)
-            ->get()
-            ->groupBy('fiel_id');
-
-        $linhas = [];
-
-        foreach ($fieis as $fiel) {
-            $pagosDoFiel = $pagos->get($fiel->id, collect())->pluck('mes_competencia')->all();
-            $meses = [];
-            $totalPagos = 0;
-
-            foreach (range(1, 12) as $mes) {
-                if (in_array($mes, $pagosDoFiel, true)) {
-                    $meses[$mes] = 'pago';
-                    $totalPagos++;
-
-                    continue;
-                }
-
-                $inicioMes = Carbon::createFromDate($this->ano, $mes, 1)->startOfMonth();
-                $fimMes = $inicioMes->copy()->endOfMonth();
-
-                $vinculado = $fiel->centros->contains(function ($centro) use ($inicioMes, $fimMes) {
-                    $inicio = Carbon::parse($centro->pivot->data_inicio);
-                    $fim = $centro->pivot->data_fim ? Carbon::parse($centro->pivot->data_fim) : null;
-
-                    return $inicio->lte($fimMes) && ($fim === null || $fim->gte($inicioMes));
-                });
-
-                $meses[$mes] = $vinculado ? 'em_aberto' : 'nao_vinculado';
-            }
-
-            $segmento = match (true) {
-                $totalPagos === 12 => 'Assíduo',
-                $totalPagos === 0 => 'Inativo',
-                $totalPagos <= 6 => 'Irregular',
-                default => null,
-            };
-
-            $linhas[] = [
-                'fiel' => $fiel,
-                'meses' => $meses,
-                'total_pagos' => $totalPagos,
-                'segmento' => $segmento,
-            ];
-        }
-
-        return $linhas;
+        return MatrizDizimosService::calcular($this->centroId, $this->ano);
     }
 
     public function lancarLoteAction(): Action

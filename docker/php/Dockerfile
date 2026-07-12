@@ -13,7 +13,17 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libmagickwand-dev \
     default-mysql-client \
+    chromium \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Browsershot (usado pelo spatie/laravel-pdf) invoca um script Node que
+# exige o pacote 'puppeteer'. Saltamos o download do Chromium proprio dele
+# porque ja instalamos o Chromium do sistema (apt) acima.
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+RUN npm install -g puppeteer
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
