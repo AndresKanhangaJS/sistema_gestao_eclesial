@@ -2,13 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Models\Centro;
 use App\Models\Paroquia;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
  * Dados de teste para validar o fluxo de autenticacao/RBAC multi-tenant.
- * Um utilizador por perfil, ligado (ou nao) a uma paroquia de teste.
+ * Um utilizador por perfil, ligado (ou nao) a uma paroquia/centro de teste.
  */
 class TestDataSeeder extends Seeder
 {
@@ -25,11 +26,15 @@ class TestDataSeeder extends Seeder
             ]
         );
 
+        $centro = Centro::withoutGlobalScopes()->firstOrCreate(
+            ['paroquia_id' => $paroquia->id, 'nome' => 'Centro de Teste'],
+        );
+
         $utilizadores = [
-            ['role' => 'admin_geral', 'paroquia_id' => null],
-            ['role' => 'tesoureiro_paroquial', 'paroquia_id' => $paroquia->id],
-            ['role' => 'tesoureiro_centro', 'paroquia_id' => $paroquia->id],
-            ['role' => 'consultor', 'paroquia_id' => null],
+            ['role' => 'admin_geral', 'paroquia_id' => null, 'centro_id' => null],
+            ['role' => 'tesoureiro_paroquial', 'paroquia_id' => $paroquia->id, 'centro_id' => null],
+            ['role' => 'tesoureiro_centro', 'paroquia_id' => $paroquia->id, 'centro_id' => $centro->id],
+            ['role' => 'consultor', 'paroquia_id' => null, 'centro_id' => null],
         ];
 
         foreach ($utilizadores as $dados) {
@@ -39,6 +44,7 @@ class TestDataSeeder extends Seeder
                     'name' => ucfirst(str_replace('_', ' ', $dados['role'])),
                     'password' => bcrypt('password'),
                     'paroquia_id' => $dados['paroquia_id'],
+                    'centro_id' => $dados['centro_id'],
                 ]
             );
 

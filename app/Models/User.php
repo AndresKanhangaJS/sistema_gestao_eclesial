@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'paroquia_id'])]
+#[Fillable(['name', 'email', 'password', 'paroquia_id', 'centro_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -35,5 +35,10 @@ class User extends Authenticatable
     public function paroquia(): BelongsTo
     {
         return $this->belongsTo(Paroquia::class);
+    }
+
+    public function centro(): BelongsTo
+    {
+        return $this->belongsTo(Centro::class);
     }
 }
