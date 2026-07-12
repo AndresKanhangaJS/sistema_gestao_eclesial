@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Enums\StatusConciliacao;
 use App\Enums\TipoMovimento;
+use App\Models\Centro;
 use App\Models\Movimento;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +14,13 @@ class MovimentoObserver
     {
         if (! $movimento->usuario_id && Auth::check()) {
             $movimento->usuario_id = Auth::id();
+        }
+
+        // O formulario do MovimentoResource nao tem campo paroquia_id (o
+        // centro ja implica a paroquia) — deriva-se sempre do centro
+        // seleccionado, nunca do utilizador (admin_geral nao tem paroquia_id).
+        if (! $movimento->paroquia_id && $movimento->centro_id) {
+            $movimento->paroquia_id = Centro::withoutGlobalScopes()->find($movimento->centro_id)?->paroquia_id;
         }
     }
 
