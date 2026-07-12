@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\FielResource\Pages;
+use App\Filament\Resources\FielResource\RelationManagers\CentrosRelationManager;
+use App\Models\Fiel;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+
+class FielResource extends Resource
+{
+    protected static ?string $model = Fiel::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+
+    protected static ?string $navigationGroup = 'Fiéis';
+
+    protected static ?string $modelLabel = 'Fiel';
+
+    protected static ?string $pluralModelLabel = 'Fiéis';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Tabs::make('Fiel')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Dados Pessoais')
+                            ->schema([
+                                Forms\Components\Select::make('paroquia_id')
+                                    ->relationship('paroquia', 'nome')
+                                    ->required()
+                                    ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
+                                    ->default(fn () => Auth::user()?->paroquia_id),
+                                Forms\Components\TextInput::make('nome')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('codigo_dizimista')
+                                    ->label('Código de dizimista')
+                                    ->required()
+                                    ->unique(ignoreRecord: true)
+                                    ->maxLength(255),
+                                Forms\Components\DatePicker::make('data_nascimento'),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'ativo' => 'Ativo',
+                                        'inativo' => 'Inativo',
+                                    ])
+                                    ->required()
+                                    ->default('ativo'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Contacto')
+                            ->schema([
+                                Forms\Components\TextInput::make('telefone')
+                                    ->tel()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->maxLength(255),
+                            ]),
+                    ]),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('nome')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('codigo_dizimista')
+                    ->label('Código')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('telefone'),
+                Tables\Columns\TextColumn::make('centro_atual')
+                    ->label('Centro actual')
+                    ->state(function (Fiel $record): string {
+                        $centro = $record->centros()->wherePivotNull('data_fim')->first();
+
+                        return $centro?->nome ?? 'Não vinculado';
+                    }),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'success' => 'ativo',
+                        'danger' => 'inativo',
+                    ]),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'ativo' => 'Ativo',
+                        'inativo' => 'Inativo',
+                    ]),
+                Tables\Filters\TrashedFilter::make(),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = Auth::user();
+
+        // A ParoquiaScope ja limita a paroquia; para tesoureiro_centro reforcamos
+        // para so mostrar fieis com vinculo activo ao seu proprio centro.
+        if ($user && $user->hasRole('tesoureiro_centro')) {
+            $query->whereHas(
+                'centros',
+                fn (Builder $q) => $q->where('centros.id', $user->centro_id)->whereNull('fiel_centros.data_fim')
+            );
+        }
+
+        return $query;
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            CentrosRelationManager::class,
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListFiels::route('/'),
+            'create' => Pages\CreateFiel::route('/create'),
+            'edit' => Pages\EditFiel::route('/{record}/edit'),
+        ];
+    }
+}
