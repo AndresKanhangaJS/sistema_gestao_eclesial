@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // admin_geral tem acesso total ao sistema (CLAUDE.md), sem depender
+        // de permissions individuais por Resource.
+        Gate::before(fn ($user, string $ability) => $user->hasRole('admin_geral') ? true : null);
     }
 }
