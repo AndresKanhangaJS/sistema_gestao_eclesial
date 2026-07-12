@@ -200,11 +200,21 @@ class MovimentoResource extends Resource
                 Tables\Actions\Action::make('verComprovativo')
                     ->label('Ver comprovativo')
                     ->icon('heroicon-o-paper-clip')
-                    ->visible(fn (Movimento $record) => filled($record->comprovativo_path))
-                    ->url(fn (Movimento $record) => Storage::disk('s3')->temporaryUrl(
-                        $record->comprovativo_path,
-                        now()->addMinutes(60)
-                    ), shouldOpenInNewTab: true),
+                    // So aparece se houver ficheiro E o disco s3 estiver mesmo
+                    // configurado (bucket definido) — gerar a URL assinada
+                    // falha (e rebentaria o render da tabela) sem isso.
+                    ->visible(fn (Movimento $record) => filled($record->comprovativo_path)
+                        && filled(config('filesystems.disks.s3.bucket')))
+                    ->url(function (Movimento $record) {
+                        try {
+                            return Storage::disk('s3')->temporaryUrl(
+                                $record->comprovativo_path,
+                                now()->addMinutes(60)
+                            );
+                        } catch (\Throwable $e) {
+                            return null;
+                        }
+                    }, shouldOpenInNewTab: true),
                 Tables\Actions\Action::make('aprovar')
                     ->label('Aprovar')
                     ->icon('heroicon-o-check-circle')
