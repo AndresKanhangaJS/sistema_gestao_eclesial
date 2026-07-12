@@ -1,0 +1,107 @@
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: sge_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php-fpm
+    networks:
+      - sge
+
+  php-fpm:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: sge_php
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - PHP_IDE_CONFIG=serverName=sge
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - sge
+
+  mysql:
+    image: mysql:8.0
+    container_name: sge_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: sge_db
+      MYSQL_USER: sge_user
+      MYSQL_PASSWORD: sge_pass
+      MYSQL_ROOT_PASSWORD: sge_root_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - sge_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usge_user", "-psge_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sge
+
+  redis:
+    image: redis:7-alpine
+    container_name: sge_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - sge_redis_data:/data
+    networks:
+      - sge
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: sge_scheduler
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: >
+      sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    networks:
+      - sge
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: sge_worker
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: php artisan queue:work --sleep=3 --tries=3
+    networks:
+      - sge
+
+networks:
+  sge:
+    driver: bridge
+
+volumes:
+  sge_mysql_data:
+  sge_redis_data:
