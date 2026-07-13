@@ -7,15 +7,19 @@ use App\Models\User;
 
 /**
  * admin_geral tem acesso total via Gate::before (AppServiceProvider).
- * tesoureiro_paroquial: CRUD (sem delete) dentro da sua propria paroquia.
+ * administrador_paroquial e tesoureiro_paroquial: CRUD (sem delete) dentro
+ * da sua propria paroquia — mesmo alcance, so o administrador_paroquial
+ * acumula tambem a gestao de utilizadores (UserPolicy).
  * tesoureiro_centro: so leitura, e apenas do seu proprio centro.
  * consultor: so leitura, global.
  */
 class CentroPolicy
 {
+    private const GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro', 'consultor']);
     }
 
     public function view(User $user, Centro $centro): bool
@@ -24,7 +28,7 @@ class CentroPolicy
             return true;
         }
 
-        if ($user->hasRole('tesoureiro_paroquial')) {
+        if ($user->hasRole(self::GESTORES_PAROQUIA)) {
             return $centro->paroquia_id === $user->paroquia_id;
         }
 
@@ -37,12 +41,12 @@ class CentroPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('tesoureiro_paroquial');
+        return $user->hasRole(self::GESTORES_PAROQUIA);
     }
 
     public function update(User $user, Centro $centro): bool
     {
-        return $user->hasRole('tesoureiro_paroquial') && $centro->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $centro->paroquia_id === $user->paroquia_id;
     }
 
     public function delete(User $user, Centro $centro): bool

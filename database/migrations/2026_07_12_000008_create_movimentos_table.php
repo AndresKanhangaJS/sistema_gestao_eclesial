@@ -2,14 +2,20 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('movimentos', function (Blueprint $table) {
+        // sqlite (usado nos testes, ver phpunit.xml) nao suporta CONCAT() nem
+        // ALTER TABLE ... ADD CONSTRAINT — usa-se ||  para a coluna gerada e
+        // omite-se o CHECK via ALTER (a validacao de mes 1-12 continua feita
+        // na aplicacao); em producao (MySQL) mantem-se tudo como antes.
+        $sqlite = Schema::getConnection()->getDriverName() === 'sqlite';
+
+        Schema::create('movimentos', function (Blueprint $table) use ($sqlite) {
             $table->id();
             $table->foreignId('paroquia_id')->constrained('paroquias')->restrictOnDelete();
             $table->foreignId('centro_id')->constrained('centros')->restrictOnDelete();
@@ -32,7 +38,9 @@ return new class extends Migration
             // NULLs numa unique key, isto replica uma unique key parcial
             // (fiel_id, ano_competencia, mes_competencia) apenas para dízimos.
             $table->string('dizimo_unico', 100)->nullable()->storedAs(
-                "CASE WHEN tipo = 'dizimo' THEN CONCAT(fiel_id, '-', ano_competencia, '-', mes_competencia) ELSE NULL END"
+                $sqlite
+                    ? "CASE WHEN tipo = 'dizimo' THEN fiel_id || '-' || ano_competencia || '-' || mes_competencia ELSE NULL END"
+                    : "CASE WHEN tipo = 'dizimo' THEN CONCAT(fiel_id, '-', ano_competencia, '-', mes_competencia) ELSE NULL END"
             );
             $table->timestamps();
             $table->softDeletes();
@@ -41,10 +49,12 @@ return new class extends Migration
         });
 
         // CHECK constraint: mes_competencia só pode estar entre 1 e 12 (ou nulo)
-        DB::statement(
-            'ALTER TABLE movimentos ADD CONSTRAINT movimentos_mes_competencia_check '
-            . 'CHECK (mes_competencia IS NULL OR (mes_competencia BETWEEN 1 AND 12))'
-        );
+        if (! $sqlite) {
+            DB::statement(
+                'ALTER TABLE movimentos ADD CONSTRAINT movimentos_mes_competencia_check '
+                .'CHECK (mes_competencia IS NULL OR (mes_competencia BETWEEN 1 AND 12))'
+            );
+        }
     }
 
     public function down(): void

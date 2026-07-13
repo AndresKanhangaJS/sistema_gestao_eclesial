@@ -29,7 +29,7 @@ class NotificarComprovativosPendentes extends Command
 
         foreach ($movimentosPendentes as $paroquiaId => $movimentos) {
             $tesoureiros = User::where('paroquia_id', $paroquiaId)
-                ->role('tesoureiro_paroquial')
+                ->role(['administrador_paroquial', 'tesoureiro_paroquial'])
                 ->get();
 
             if ($tesoureiros->isEmpty()) {

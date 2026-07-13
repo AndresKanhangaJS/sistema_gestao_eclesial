@@ -26,7 +26,7 @@ class MatrizAssiduidadeReport extends Page
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
     }
 
     public function mount(): void

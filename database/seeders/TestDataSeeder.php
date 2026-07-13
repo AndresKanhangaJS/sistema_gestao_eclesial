@@ -32,6 +32,7 @@ class TestDataSeeder extends Seeder
 
         $utilizadores = [
             ['role' => 'admin_geral', 'paroquia_id' => null, 'centro_id' => null],
+            ['role' => 'administrador_paroquial', 'paroquia_id' => $paroquia->id, 'centro_id' => null],
             ['role' => 'tesoureiro_paroquial', 'paroquia_id' => $paroquia->id, 'centro_id' => null],
             ['role' => 'tesoureiro_centro', 'paroquia_id' => $paroquia->id, 'centro_id' => $centro->id],
             ['role' => 'consultor', 'paroquia_id' => null, 'centro_id' => null],
@@ -39,7 +40,7 @@ class TestDataSeeder extends Seeder
 
         foreach ($utilizadores as $dados) {
             $user = User::firstOrCreate(
-                ['email' => $dados['role'] . '@sge.local'],
+                ['email' => $dados['role'].'@sge.local'],
                 [
                     'name' => ucfirst(str_replace('_', ' ', $dados['role'])),
                     'password' => bcrypt('password'),

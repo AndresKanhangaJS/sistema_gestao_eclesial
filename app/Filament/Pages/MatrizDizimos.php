@@ -15,16 +15,18 @@ use Filament\Actions\Contracts\HasActions;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 
-class MatrizDizimos extends Page implements HasForms, HasActions
+class MatrizDizimos extends Page implements HasActions, HasForms
 {
-    use InteractsWithForms;
     use InteractsWithActions;
+    use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-table-cells';
 
@@ -42,7 +44,7 @@ class MatrizDizimos extends Page implements HasForms, HasActions
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
     }
 
     public function mount(): void
@@ -116,10 +118,53 @@ class MatrizDizimos extends Page implements HasForms, HasActions
                     ->label('Data do Movimento')
                     ->required()
                     ->default(now()),
+                Forms\Components\FileUpload::make('comprovativo_path')
+                    ->label('Comprovativo')
+                    ->disk(config('filesystems.default'))
+                    ->directory('comprovativos')
+                    ->getUploadedFileNameForStorageUsing(
+                        fn ($file) => Str::uuid().'.'.$file->getClientOriginalExtension()
+                    )
+                    ->required(
+                        fn (Get $get) => MetodoPagamento::find($get('metodo_pagamento_id'))?->exige_comprovativo ?? false
+                    ),
             ])
             ->action(function (array $data, array $arguments): void {
                 $this->processarLancamentoLote((int) $arguments['fielId'], $data);
             });
+    }
+
+    /**
+     * O centroId e propriedade publica Livewire — adulteravel no cliente.
+     * Confirma que pertence mesmo ao utilizador autenticado antes de o usar
+     * para escrever movimentos financeiros.
+     */
+    private function centroPertenceAoUtilizador(int $centroId): bool
+    {
+        $user = Auth::user();
+
+        if ($user->hasRole('admin_geral')) {
+            return Centro::withoutGlobalScopes()->whereKey($centroId)->exists();
+        }
+
+        if ($user->hasRole('tesoureiro_centro')) {
+            return $centroId === $user->centro_id;
+        }
+
+        // tesoureiro_paroquial: Centro tem ParoquiaScope, um centro de outra
+        // paroquia simplesmente nao existe nesta query.
+        return Centro::whereKey($centroId)->exists();
+    }
+
+    /**
+     * Confirma que o fiel (id vindo do argumento da action, tambem
+     * controlavel pelo cliente) esta mesmo vinculado ao centro validado.
+     */
+    private function fielPertenceAoCentro(int $fielId, int $centroId): bool
+    {
+        return Fiel::whereKey($fielId)
+            ->whereHas('centros', fn ($q) => $q->where('centros.id', $centroId))
+            ->exists();
     }
 
     /**
@@ -129,6 +174,14 @@ class MatrizDizimos extends Page implements HasForms, HasActions
      */
     public function processarLancamentoLote(int $fielId, array $data): void
     {
+        if (! $this->centroId || ! $this->centroPertenceAoUtilizador($this->centroId)) {
+            abort(403, 'Centro inválido.');
+        }
+
+        if (! $this->fielPertenceAoCentro($fielId, $this->centroId)) {
+            abort(403, 'Fiel não vinculado a este centro.');
+        }
+
         $criados = 0;
         $ignorados = 0;
 
@@ -146,8 +199,10 @@ class MatrizDizimos extends Page implements HasForms, HasActions
             }
 
             DB::transaction(function () use ($fielId, $mes, $data) {
+                // paroquia_id nao e definido aqui de proposito: o
+                // MovimentoObserver deriva-o do centro_id (ja validado acima),
+                // a mesma fonte de verdade usada no MovimentoResource.
                 Movimento::create([
-                    'paroquia_id' => Fiel::withoutGlobalScopes()->find($fielId)->paroquia_id,
                     'centro_id' => $this->centroId,
                     'fiel_id' => $fielId,
                     'metodo_pagamento_id' => $data['metodo_pagamento_id'],
@@ -157,6 +212,7 @@ class MatrizDizimos extends Page implements HasForms, HasActions
                     'ano_competencia' => $this->ano,
                     'mes_competencia' => $mes,
                     'data_movimento' => $data['data_movimento'],
+                    'comprovativo_path' => $data['comprovativo_path'] ?? null,
                 ]);
             });
 

@@ -25,7 +25,7 @@ class CentrosRelationManager extends RelationManager
 
     private static function podeEscrever(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'tesoureiro_paroquial']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial']) ?? false;
     }
 
     public function form(Form $form): Form
@@ -74,23 +74,41 @@ class CentrosRelationManager extends RelationManager
                     ->label('Transferir')
                     ->icon('heroicon-o-arrow-path')
                     ->visible(fn ($record) => self::podeEscrever() && $record->pivot->data_fim === null)
-                    ->form([
-                        Forms\Components\Select::make('novo_centro_id')
-                            ->label('Novo centro')
-                            ->options(
-                                fn ($record) => Centro::where('id', '!=', $record->id)->pluck('nome', 'id')
-                            )
-                            ->required(),
-                        Forms\Components\DatePicker::make('data_transferencia')
-                            ->label('Data da Transferência')
-                            ->required()
-                            ->default(now()),
-                        Forms\Components\Textarea::make('motivo')
-                            ->label('Motivo da transferência')
-                            ->required(),
-                    ])
+                    ->form(function ($record) {
+                        // O novo centro tem de pertencer a mesma paroquia do
+                        // fiel (fixa desde a criacao) — independente do papel
+                        // de quem transfere, incl. admin_geral, que nao tem
+                        // ParoquiaScope aplicado e por isso via aqui todos os
+                        // centros sem este filtro explicito.
+                        $paroquiaId = $this->getOwnerRecord()->paroquia_id;
+
+                        return [
+                            Forms\Components\Select::make('novo_centro_id')
+                                ->label('Novo centro')
+                                ->options(
+                                    fn () => Centro::withoutGlobalScopes()
+                                        ->where('paroquia_id', $paroquiaId)
+                                        ->where('id', '!=', $record->id)
+                                        ->pluck('nome', 'id')
+                                )
+                                ->required(),
+                            Forms\Components\DatePicker::make('data_transferencia')
+                                ->label('Data da Transferência')
+                                ->required()
+                                ->default(now()),
+                            Forms\Components\Textarea::make('motivo')
+                                ->label('Motivo da transferência')
+                                ->required(),
+                        ];
+                    })
                     ->action(function (array $data, $record): void {
                         $fiel = $this->getOwnerRecord();
+
+                        $novoCentro = Centro::withoutGlobalScopes()->find($data['novo_centro_id']);
+
+                        if (! $novoCentro || $novoCentro->paroquia_id !== $fiel->paroquia_id) {
+                            abort(403, 'O novo centro tem de pertencer à mesma paróquia do fiel.');
+                        }
 
                         $record->pivot->update(['data_fim' => $data['data_transferencia']]);
 

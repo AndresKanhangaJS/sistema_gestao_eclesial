@@ -32,7 +32,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/matriz-assiduidade/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : (int) $request->query('centro_id');
         $ano = (int) $request->query('ano', now()->year);
@@ -45,7 +45,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
             foreach ($linha['meses'] as $i => $estado) {
                 $row[$meses[$i - 1]] = $estado;
             }
-            $row['Segmento'] = $linha['segmento'] ?? $linha['total_pagos'] . '/12';
+            $row['Segmento'] = $linha['segmento'] ?? $linha['total_pagos'].'/12';
 
             return $row;
         })->all();
@@ -58,11 +58,14 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/matriz-assiduidade/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : (int) $request->query('centro_id');
         $ano = (int) $request->query('ano', now()->year);
-        $centro = Centro::withoutGlobalScopes()->findOrFail($centroId);
+        // Sem withoutGlobalScopes(): a ParoquiaScope do Centro garante que um
+        // tesoureiro_paroquial nao consegue, por query string, obter dados
+        // (nem sequer o nome) de um centro de outra paroquia.
+        $centro = Centro::findOrFail($centroId);
 
         return RelatorioPdf::view('pdfs.relatorios.matriz-assiduidade', [
             'titulo' => 'Matriz de Assiduidade do Dízimo',
@@ -75,7 +78,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/demonstrativo-arrecadacao/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
         $ano = (int) $request->query('ano', now()->year);
@@ -102,7 +105,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/demonstrativo-arrecadacao/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
         $ano = (int) $request->query('ano', now()->year);
@@ -117,7 +120,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/rastreabilidade-bancaria/pdf', function () {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'consultor']), 403);
 
         return RelatorioPdf::view('pdfs.relatorios.rastreabilidade-bancaria', [
             'titulo' => 'Rastreabilidade Bancária por Conta',
@@ -128,11 +131,11 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/repasses-inter-centro/pdf', function () {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'consultor']), 403);
 
         $query = FielCentro::withoutGlobalScopes()->whereNotNull('motivo_transferencia')->with(['fiel', 'centro']);
 
-        if ($user->hasRole('tesoureiro_paroquial')) {
+        if ($user->hasRole(['administrador_paroquial', 'tesoureiro_paroquial'])) {
             $query->whereHas('fiel', fn ($q) => $q->where('paroquia_id', $user->paroquia_id));
         }
 
@@ -145,14 +148,14 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/balanco-receitas-despesas/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
         $ano = (int) $request->query('ano', now()->year);
         $dados = BalancoReceitasDespesasService::calcular($ano, $centroId);
 
         $rows = [];
-        foreach (['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] as $i => $mesLabel) {
+        foreach (['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as $i => $mesLabel) {
             $linha = $dados['por_mes'][$i + 1];
             $rows[] = ['Mês' => $mesLabel, 'Receitas' => $linha['receitas'], 'Despesas' => $linha['despesas'], 'Saldo' => $linha['saldo']];
         }
@@ -165,7 +168,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/balanco-receitas-despesas/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
         $ano = (int) $request->query('ano', now()->year);
@@ -180,7 +183,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/fieis-por-situacao/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
         $ano = (int) $request->query('ano', now()->year);
@@ -188,7 +191,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $rows = collect($linhas)->map(fn ($linha) => [
             'Fiel' => $linha['fiel']->nome,
-            'Dízimos pagos' => $linha['total_pagos'] . '/12',
+            'Dízimos pagos' => $linha['total_pagos'].'/12',
             'Situação' => $linha['segmento'] ?? '—',
         ])->all();
 
@@ -200,7 +203,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/fieis-por-situacao/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
 
         $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
         $ano = (int) $request->query('ano', now()->year);

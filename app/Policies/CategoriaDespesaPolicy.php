@@ -7,16 +7,19 @@ use App\Models\User;
 
 /**
  * admin_geral tem acesso total via Gate::before (AppServiceProvider).
- * tesoureiro_paroquial: CRUD dentro da propria paroquia.
+ * administrador_paroquial e tesoureiro_paroquial: CRUD dentro da propria
+ * paroquia.
  * tesoureiro_centro: sem acesso a gestao (so usa categorias existentes ao
  * lancar despesas no MovimentoResource, o que nao passa por esta Policy).
  * consultor: so leitura, global.
  */
 class CategoriaDespesaPolicy
 {
+    private const GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['tesoureiro_paroquial', 'consultor']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, 'consultor']);
     }
 
     public function view(User $user, CategoriaDespesa $categoriaDespesa): bool
@@ -25,17 +28,17 @@ class CategoriaDespesaPolicy
             return true;
         }
 
-        return $user->hasRole('tesoureiro_paroquial') && $categoriaDespesa->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $categoriaDespesa->paroquia_id === $user->paroquia_id;
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('tesoureiro_paroquial');
+        return $user->hasRole(self::GESTORES_PAROQUIA);
     }
 
     public function update(User $user, CategoriaDespesa $categoriaDespesa): bool
     {
-        return $user->hasRole('tesoureiro_paroquial') && $categoriaDespesa->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $categoriaDespesa->paroquia_id === $user->paroquia_id;
     }
 
     /**
@@ -44,7 +47,7 @@ class CategoriaDespesaPolicy
      */
     public function delete(User $user, CategoriaDespesa $categoriaDespesa): bool
     {
-        if (! $user->hasRole('tesoureiro_paroquial') || $categoriaDespesa->paroquia_id !== $user->paroquia_id) {
+        if (! $user->hasRole(self::GESTORES_PAROQUIA) || $categoriaDespesa->paroquia_id !== $user->paroquia_id) {
             return false;
         }
 
@@ -53,7 +56,7 @@ class CategoriaDespesaPolicy
 
     public function deleteAny(User $user): bool
     {
-        return $user->hasRole('tesoureiro_paroquial');
+        return $user->hasRole(self::GESTORES_PAROQUIA);
     }
 
     public function restore(User $user, CategoriaDespesa $categoriaDespesa): bool

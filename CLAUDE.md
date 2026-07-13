@@ -14,6 +14,7 @@ Laravel 12 | Filament v3 | Livewire | Tailwind | MySQL 8.0 | Redis | Docker
 
 ## Perfis RBAC
 - admin_geral → acesso total ao sistema
+- administrador_paroquial → financeiro completo + conciliação bancária da sua paróquia (paridade com tesoureiro_paroquial) + gestão de utilizadores da própria paróquia (só pode atribuir os papéis tesoureiro_paroquial/tesoureiro_centro, nunca admin_geral/consultor/outro administrador_paroquial)
 - tesoureiro_paroquial → financeiro completo + conciliação bancária
 - tesoureiro_centro → apenas o seu centro
 - consultor → read-only global

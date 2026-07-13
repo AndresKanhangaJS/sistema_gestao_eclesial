@@ -7,15 +7,18 @@ use App\Models\User;
 
 /**
  * admin_geral tem acesso total via Gate::before (AppServiceProvider).
- * tesoureiro_paroquial: CRUD (incl. soft-delete) dentro da sua propria paroquia.
+ * administrador_paroquial e tesoureiro_paroquial: CRUD (incl. soft-delete)
+ * dentro da sua propria paroquia.
  * tesoureiro_centro: so leitura, e apenas dos fieis vinculados ao seu centro.
  * consultor: so leitura, global.
  */
 class FielPolicy
 {
+    private const GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro', 'consultor']);
     }
 
     public function view(User $user, Fiel $fiel): bool
@@ -24,7 +27,7 @@ class FielPolicy
             return true;
         }
 
-        if ($user->hasRole('tesoureiro_paroquial')) {
+        if ($user->hasRole(self::GESTORES_PAROQUIA)) {
             return $fiel->paroquia_id === $user->paroquia_id;
         }
 
@@ -37,27 +40,27 @@ class FielPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('tesoureiro_paroquial');
+        return $user->hasRole(self::GESTORES_PAROQUIA);
     }
 
     public function update(User $user, Fiel $fiel): bool
     {
-        return $user->hasRole('tesoureiro_paroquial') && $fiel->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $fiel->paroquia_id === $user->paroquia_id;
     }
 
     public function delete(User $user, Fiel $fiel): bool
     {
-        return $user->hasRole('tesoureiro_paroquial') && $fiel->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $fiel->paroquia_id === $user->paroquia_id;
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->hasRole('tesoureiro_paroquial');
+        return $user->hasRole(self::GESTORES_PAROQUIA);
     }
 
     public function restore(User $user, Fiel $fiel): bool
     {
-        return $user->hasRole('tesoureiro_paroquial') && $fiel->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $fiel->paroquia_id === $user->paroquia_id;
     }
 
     public function forceDelete(User $user, Fiel $fiel): bool

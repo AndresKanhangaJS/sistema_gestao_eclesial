@@ -8,12 +8,13 @@ use Spatie\Permission\Models\Role;
 class RoleSeeder extends Seeder
 {
     /**
-     * Cria os 4 perfis RBAC definidos no CLAUDE.md.
+     * Cria os 5 perfis RBAC definidos no CLAUDE.md.
      */
     public function run(): void
     {
         $roles = [
             'admin_geral',
+            'administrador_paroquial',
             'tesoureiro_paroquial',
             'tesoureiro_centro',
             'consultor',

@@ -8,16 +8,20 @@ use App\Models\User;
 
 /**
  * admin_geral tem acesso total via Gate::before (AppServiceProvider).
- * tesoureiro_paroquial: CRUD dentro da paroquia + conciliacao (aprovar/rejeitar).
- * tesoureiro_centro: CRUD so no seu centro, sem conciliacao (exclusiva do paroquial).
+ * administrador_paroquial e tesoureiro_paroquial: CRUD dentro da paroquia +
+ * conciliacao (aprovar/rejeitar) — mesmo alcance financeiro.
+ * tesoureiro_centro: CRUD so no seu centro, sem conciliacao (exclusiva dos
+ * dois papeis paroquiais acima).
  * consultor: so leitura, global.
  * delete/forceDelete: nunca (CLAUDE.md: nunca DELETE fisico — usar estornos).
  */
 class MovimentoPolicy
 {
+    private const GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro', 'consultor']);
     }
 
     public function view(User $user, Movimento $movimento): bool
@@ -26,7 +30,7 @@ class MovimentoPolicy
             return true;
         }
 
-        if ($user->hasRole('tesoureiro_paroquial')) {
+        if ($user->hasRole(self::GESTORES_PAROQUIA)) {
             return $movimento->paroquia_id === $user->paroquia_id;
         }
 
@@ -39,7 +43,7 @@ class MovimentoPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole(['tesoureiro_paroquial', 'tesoureiro_centro']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro']);
     }
 
     public function update(User $user, Movimento $movimento): bool
@@ -48,7 +52,7 @@ class MovimentoPolicy
             return false;
         }
 
-        if ($user->hasRole('tesoureiro_paroquial')) {
+        if ($user->hasRole(self::GESTORES_PAROQUIA)) {
             return $movimento->paroquia_id === $user->paroquia_id;
         }
 
@@ -60,11 +64,12 @@ class MovimentoPolicy
     }
 
     /**
-     * Conciliacao bancaria: exclusiva do tesoureiro_paroquial (CLAUDE.md).
+     * Conciliacao bancaria: exclusiva do administrador_paroquial e do
+     * tesoureiro_paroquial (CLAUDE.md).
      */
     public function aprovar(User $user, Movimento $movimento): bool
     {
-        return $user->hasRole('tesoureiro_paroquial') && $movimento->paroquia_id === $user->paroquia_id;
+        return $user->hasRole(self::GESTORES_PAROQUIA) && $movimento->paroquia_id === $user->paroquia_id;
     }
 
     public function rejeitar(User $user, Movimento $movimento): bool

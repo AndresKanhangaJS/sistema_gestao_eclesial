@@ -25,7 +25,7 @@ class DemonstrativoArrecadacao extends Page
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']) ?? false;
     }
 
     public function mount(): void

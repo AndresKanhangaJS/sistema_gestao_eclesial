@@ -7,7 +7,6 @@ use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportAction;
@@ -36,7 +35,7 @@ class AuditoriaRepassesInterCentro extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'tesoureiro_paroquial', 'consultor']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'consultor']) ?? false;
     }
 
     protected function getTableQuery(): Builder
@@ -47,7 +46,7 @@ class AuditoriaRepassesInterCentro extends Page implements HasTable
             ->whereNotNull('motivo_transferencia')
             ->with(['fiel', 'centro']);
 
-        if ($user->hasRole('tesoureiro_paroquial')) {
+        if ($user->hasRole(['administrador_paroquial', 'tesoureiro_paroquial'])) {
             $query->whereHas('fiel', fn (Builder $q) => $q->where('paroquia_id', $user->paroquia_id));
         }
 
