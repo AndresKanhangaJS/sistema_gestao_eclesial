@@ -3,7 +3,8 @@
     "allow": [
       "Bash(php -v)",
       "Bash(composer -V)",
-      "Bash(docker compose exec *)"
+      "Bash(docker compose exec *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }
