@@ -32,6 +32,17 @@ class MovimentoResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Movimentos';
 
+    public const MESES = [
+        1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+        5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+        9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro',
+    ];
+
+    public static function mesLabel(?int $mes): ?string
+    {
+        return $mes ? (self::MESES[$mes] ?? null) : null;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -46,7 +57,7 @@ class MovimentoResource extends Resource
                                     ->options([
                                         TipoMovimento::Dizimo->value => 'Dízimo',
                                         TipoMovimento::Ofertorio->value => 'Ofertório',
-                                        TipoMovimento::Campanha->value => 'Campanha',
+                                        TipoMovimento::Campanha->value => 'Outras Contribuições',
                                         TipoMovimento::DespesaCentro->value => 'Despesa de Centro',
                                     ])
                                     ->required()
@@ -89,11 +100,7 @@ class MovimentoResource extends Resource
                                     ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
                                 Forms\Components\Select::make('mes_competencia')
                                     ->label('Mês de competência')
-                                    ->options([
-                                        1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
-                                        5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
-                                        9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro',
-                                    ])
+                                    ->options(self::MESES)
                                     ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
                                     ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
                                     ->rule(function (Get $get, ?Model $record) {
@@ -136,7 +143,7 @@ class MovimentoResource extends Resource
                                     ->disk(config('filesystems.default'))
                                     ->directory('comprovativos')
                                     ->getUploadedFileNameForStorageUsing(
-                                        fn ($file) => Str::uuid() . '.' . $file->getClientOriginalExtension()
+                                        fn ($file) => Str::uuid().'.'.$file->getClientOriginalExtension()
                                     )
                                     ->required(
                                         fn (Get $get) => MetodoPagamento::find($get('metodo_pagamento_id'))?->exige_comprovativo ?? false
@@ -155,7 +162,7 @@ class MovimentoResource extends Resource
                     ->formatStateUsing(fn (TipoMovimento $state) => match ($state) {
                         TipoMovimento::Dizimo => 'Dízimo',
                         TipoMovimento::Ofertorio => 'Ofertório',
-                        TipoMovimento::Campanha => 'Campanha',
+                        TipoMovimento::Campanha => 'Outras Contribuições',
                         TipoMovimento::DespesaCentro => 'Despesa',
                     }),
                 Tables\Columns\TextColumn::make('centro.nome')
@@ -163,6 +170,14 @@ class MovimentoResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('fiel.nome')
                     ->label('Fiel')
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('ano_competencia')
+                    ->label('Ano')
+                    ->sortable()
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('mes_competencia')
+                    ->label('Mês')
+                    ->formatStateUsing(fn (?int $state) => self::mesLabel($state))
                     ->placeholder('—'),
                 Tables\Columns\TextColumn::make('valor')
                     ->label('Valor')
@@ -195,7 +210,7 @@ class MovimentoResource extends Resource
                     ->options([
                         TipoMovimento::Dizimo->value => 'Dízimo',
                         TipoMovimento::Ofertorio->value => 'Ofertório',
-                        TipoMovimento::Campanha->value => 'Campanha',
+                        TipoMovimento::Campanha->value => 'Outras Contribuições',
                         TipoMovimento::DespesaCentro->value => 'Despesa de Centro',
                     ]),
                 Tables\Filters\SelectFilter::make('status_conciliacao')

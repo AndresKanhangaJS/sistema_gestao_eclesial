@@ -31,7 +31,7 @@ class ArrecadacaoPieChart extends ChartWidget
                     'backgroundColor' => ['#3b82f6', '#10b981', '#f59e0b'],
                 ],
             ],
-            'labels' => ['Dízimo', 'Ofertório', 'Campanha'],
+            'labels' => ['Dízimo', 'Ofertório', 'Outras Contribuições'],
         ];
     }
 

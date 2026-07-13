@@ -92,13 +92,13 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
                 'Mês' => $mesLabel,
                 'Dízimo' => $linha['dizimo'],
                 'Ofertório' => $linha['ofertorio'],
-                'Campanha' => $linha['campanha'],
+                'Outras Contribuições' => $linha['campanha'],
                 'Total' => array_sum($linha),
             ];
         }
 
         return Excel::download(
-            new ArrayExport($rows, ['Mês', 'Dízimo', 'Ofertório', 'Campanha', 'Total']),
+            new ArrayExport($rows, ['Mês', 'Dízimo', 'Ofertório', 'Outras Contribuições', 'Total']),
             'demonstrativo-arrecadacao.xlsx'
         );
     })->name('demonstrativo-arrecadacao.excel');

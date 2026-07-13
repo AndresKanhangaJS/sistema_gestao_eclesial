@@ -108,6 +108,14 @@ class UserResource extends Resource
                                     ->options(fn () => self::papeisAtribuiveis())
                                     ->required()
                                     ->live(),
+                                Forms\Components\Select::make('status')
+                                    ->label('Estado')
+                                    ->options([
+                                        'ativo' => 'Activo',
+                                        'inativo' => 'Inactivo',
+                                    ])
+                                    ->required()
+                                    ->default('ativo'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Atribuição')
                             ->schema([
@@ -129,7 +137,19 @@ class UserResource extends Resource
                                     ->relationship(
                                         'centro',
                                         'nome',
-                                        fn (Builder $query, Get $get) => $query->where('paroquia_id', $get('paroquia_id') ?? Auth::user()?->paroquia_id),
+                                        function (Builder $query, Get $get) {
+                                            // $get('paroquia_id') so resolve depois do admin_geral
+                                            // escolher uma paroquia; para administrador_paroquial o
+                                            // campo esta escondido, por isso cai sempre no fallback
+                                            // da sua propria paroquia. Sem valor nenhum (admin_geral
+                                            // ainda nao escolheu), nao filtra — Centro::where(...,
+                                            // null) nunca devolveria nada.
+                                            $paroquiaId = $get('paroquia_id') ?? Auth::user()?->paroquia_id;
+
+                                            if ($paroquiaId) {
+                                                $query->where('paroquia_id', $paroquiaId);
+                                            }
+                                        },
                                     )
                                     ->required(fn (Get $get) => $get('role') === 'tesoureiro_centro')
                                     ->visible(fn (Get $get) => $get('role') === 'tesoureiro_centro'),
@@ -159,6 +179,10 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('centro.nome')
                     ->label('Centro')
                     ->placeholder('—'),
+                Tables\Columns\IconColumn::make('status')
+                    ->label('Estado')
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()
@@ -176,6 +200,12 @@ class UserResource extends Resource
 
                         return $query->whereHas('roles', fn (Builder $q) => $q->where('name', $data['value']));
                     }),
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

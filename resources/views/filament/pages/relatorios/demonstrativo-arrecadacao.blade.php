@@ -19,10 +19,15 @@
         </div>
     </div>
 
-    <x-filament-widgets::widgets
-        :widgets="$this->getHeaderWidgets()"
-        :data="$this->getHeaderWidgetsData()"
-    />
+    {{-- @livewire com key dependente do ano, em vez de <x-filament-widgets::widgets>:
+    esse componente monta os widgets com uma key fixa, por isso ao mudar o ano
+    no seletor acima a tabela por baixo actualiza (e computed na propria pagina)
+    mas os graficos ficavam presos ao ano do primeiro carregamento — a key
+    fixa impede o Livewire de os remontar. --}}
+    <x-filament::grid default="1" :lg="2" class="fi-wi gap-6">
+        @livewire(\App\Filament\Widgets\ArrecadacaoBarChart::class, ['ano' => $ano], key('arrecadacao-bar-chart-' . $ano))
+        @livewire(\App\Filament\Widgets\ArrecadacaoPieChart::class, ['ano' => $ano], key('arrecadacao-pie-chart-' . $ano))
+    </x-filament::grid>
 
     <div class="mt-4 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
         <table class="w-full text-sm">
@@ -31,7 +36,7 @@
                     <th class="px-3 py-2 text-left">Mês</th>
                     <th class="px-3 py-2 text-right">Dízimo</th>
                     <th class="px-3 py-2 text-right">Ofertório</th>
-                    <th class="px-3 py-2 text-right">Campanha</th>
+                    <th class="px-3 py-2 text-right">Outras Contribuições</th>
                     <th class="px-3 py-2 text-right">Total</th>
                 </tr>
             </thead>

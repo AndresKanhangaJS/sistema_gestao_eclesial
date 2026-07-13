@@ -37,6 +37,7 @@
                             @if ($linha['segmento'])
                                 <x-filament::badge :color="match($linha['segmento']) {
                                     'Assíduo' => 'success',
+                                    'Regular' => 'info',
                                     'Irregular' => 'warning',
                                     'Inactivo' => 'danger',
                                 }">

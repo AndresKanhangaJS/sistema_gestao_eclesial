@@ -2,8 +2,6 @@
 
 namespace App\Filament\Pages\Relatorios;
 
-use App\Filament\Widgets\ArrecadacaoBarChart;
-use App\Filament\Widgets\ArrecadacaoPieChart;
 use App\Services\DemonstrativoArrecadacaoService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
@@ -38,19 +36,6 @@ class DemonstrativoArrecadacao extends Page
         $anoAtual = (int) now()->year;
 
         return array_combine(range($anoAtual - 2, $anoAtual), range($anoAtual - 2, $anoAtual));
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            ArrecadacaoBarChart::class,
-            ArrecadacaoPieChart::class,
-        ];
-    }
-
-    protected function getHeaderWidgetsData(): array
-    {
-        return ['ano' => $this->ano];
     }
 
     #[Computed]

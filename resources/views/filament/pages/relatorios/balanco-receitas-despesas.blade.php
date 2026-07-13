@@ -22,11 +22,11 @@
     <div class="mt-4 grid grid-cols-3 gap-4">
         <x-filament::section>
             <x-slot name="heading">Receitas</x-slot>
-            <p class="text-2xl font-bold text-success-600">{{ number_format($this->dados['total_receitas'], 2, ',', '.') }}</p>
+            <p class="text-2xl font-bold" style="color: rgba(var(--success-600), 1)">{{ number_format($this->dados['total_receitas'], 2, ',', '.') }}</p>
         </x-filament::section>
         <x-filament::section>
             <x-slot name="heading">Despesas</x-slot>
-            <p class="text-2xl font-bold text-danger-600">{{ number_format($this->dados['total_despesas'], 2, ',', '.') }}</p>
+            <p class="text-2xl font-bold" style="color: rgba(var(--danger-600), 1)">{{ number_format($this->dados['total_despesas'], 2, ',', '.') }}</p>
         </x-filament::section>
         <x-filament::section>
             <x-slot name="heading">Saldo</x-slot>

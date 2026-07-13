@@ -76,12 +76,10 @@ class BancoResource extends Resource
                 Tables\Columns\TextColumn::make('iban')
                     ->label('IBAN')
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\IconColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'ativo',
-                        'danger' => 'inativo',
-                    ]),
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

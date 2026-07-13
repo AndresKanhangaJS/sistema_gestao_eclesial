@@ -20,9 +20,17 @@
         </div>
     </div>
 
+    {{--
+        As cores success/warning nao existem como classes Tailwind compiladas
+        neste projecto (o painel usa o CSS do proprio Filament, sem tema
+        Vite/Tailwind personalizado — so bg-gray-*/bg-primary-*/bg-custom-*
+        vêm compiladas). Usa-se antes as variaveis CSS que o Filament ja
+        define em cada pagina (--success-500, --warning-400, ...), que
+        funcionam sempre independentemente disso.
+    --}}
     <div class="mt-4 flex gap-4 text-sm">
-        <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-success-500"></span> Pago</span>
-        <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-warning-400"></span> Em aberto</span>
+        <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full" style="background-color: rgba(var(--success-500), 1)"></span> Pago</span>
+        <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full" style="background-color: rgba(var(--warning-400), 1)"></span> Em aberto</span>
         <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-gray-300 dark:bg-gray-600"></span> Não vinculado</span>
     </div>
 
@@ -45,9 +53,9 @@
                         @foreach ($linha['meses'] as $estado)
                             <td class="px-1 py-2 text-center">
                                 @if ($estado === 'pago')
-                                    <span class="inline-block h-4 w-4 rounded-full bg-success-500" title="Pago"></span>
+                                    <span class="inline-block h-4 w-4 rounded-full" style="background-color: rgba(var(--success-500), 1)" title="Pago"></span>
                                 @elseif ($estado === 'em_aberto')
-                                    <span class="inline-block h-4 w-4 rounded-full bg-warning-400" title="Em aberto"></span>
+                                    <span class="inline-block h-4 w-4 rounded-full" style="background-color: rgba(var(--warning-400), 1)" title="Em aberto"></span>
                                 @else
                                     <span class="inline-block h-4 w-4 rounded-full bg-gray-300 dark:bg-gray-600" title="Não vinculado"></span>
                                 @endif
@@ -57,6 +65,7 @@
                             @if ($linha['segmento'])
                                 <x-filament::badge :color="match($linha['segmento']) {
                                     'Assíduo' => 'success',
+                                    'Regular' => 'info',
                                     'Irregular' => 'warning',
                                     'Inactivo' => 'danger',
                                 }">

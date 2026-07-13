@@ -9,8 +9,9 @@ use App\Models\Movimento;
 
 /**
  * Segmenta os fieis por assiduidade do dizimo num ano (Assiduo 12/12,
- * Irregular 1-6, Inactivo 0), independente do centro (soma todos os
- * dizimos aprovados do fiel no ano, mesmo que tenha mudado de centro).
+ * Regular 7-11, Irregular 1-6, Inactivo 0), independente do centro (soma
+ * todos os dizimos aprovados do fiel no ano, mesmo que tenha mudado de
+ * centro).
  */
 class FieisPorSituacaoService
 {
@@ -38,7 +39,7 @@ class FieisPorSituacaoService
                 $totalPagos === 12 => 'Assíduo',
                 $totalPagos === 0 => 'Inactivo',
                 $totalPagos <= 6 => 'Irregular',
-                default => null,
+                default => 'Regular',
             };
 
             return [

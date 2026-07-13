@@ -46,9 +46,9 @@
                         @foreach ($linha['meses'] as $estado)
                             <td class="px-1 py-2 text-center">
                                 @if ($estado === 'pago')
-                                    <span class="inline-block h-4 w-4 rounded-full bg-success-500"></span>
+                                    <span class="inline-block h-4 w-4 rounded-full" style="background-color: rgba(var(--success-500), 1)"></span>
                                 @elseif ($estado === 'em_aberto')
-                                    <span class="inline-block h-4 w-4 rounded-full bg-warning-400"></span>
+                                    <span class="inline-block h-4 w-4 rounded-full" style="background-color: rgba(var(--warning-400), 1)"></span>
                                 @else
                                     <span class="inline-block h-4 w-4 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                                 @endif
@@ -58,6 +58,7 @@
                             @if ($linha['segmento'])
                                 <x-filament::badge :color="match($linha['segmento']) {
                                     'Assíduo' => 'success',
+                                    'Regular' => 'info',
                                     'Irregular' => 'warning',
                                     'Inactivo' => 'danger',
                                 }">

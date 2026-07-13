@@ -80,12 +80,10 @@ class ParoquiaResource extends Resource
                 Tables\Columns\TextColumn::make('diocese')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('telefone'),
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\IconColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'ativo',
-                        'danger' => 'inativo',
-                    ]),
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()

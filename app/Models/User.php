@@ -14,12 +14,24 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'paroquia_id', 'centro_id'])]
+#[Fillable(['name', 'email', 'password', 'status', 'paroquia_id', 'centro_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
+
+    /**
+     * O 'ativo' por omissao da coluna existe na BD, mas uma instancia recem
+     * criada em memoria (ex.: User::factory()->create() sem 'status'
+     * explicito) so o reflectiria depois de um refresh() — declarar aqui
+     * tambem evita canAccessPanel() ver null em vez de 'ativo'.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => 'ativo',
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -49,10 +61,16 @@ class User extends Authenticatable implements FilamentUser
      * fallback "config('app.env') !== 'local'" — ou seja, fora do ambiente
      * local (testing, production) TODOS os utilizadores, incluindo
      * admin_geral, ficavam bloqueados com 403 ao aceder a /admin.
+     *
+     * status === 'ativo' e verificado aqui como reforco (defesa em
+     * profundidade): se a conta for desactivada a meio de uma sessao ja
+     * autenticada, este middleware corre em cada pedido e corta o acesso de
+     * imediato, sem esperar por um novo login. A app\Filament\Pages\Auth\Login
+     * ja bloqueia a autenticacao em si para contas inactivas.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasAnyRole([
+        return $this->status === 'ativo' && $this->hasAnyRole([
             'admin_geral',
             'administrador_paroquial',
             'tesoureiro_paroquial',

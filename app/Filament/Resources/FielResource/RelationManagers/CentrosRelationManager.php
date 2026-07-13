@@ -19,6 +19,13 @@ class CentrosRelationManager extends RelationManager
 {
     protected static string $relationship = 'centros';
 
+    // Sem isto, o AttachAction tenta adivinhar o nome do relacionamento
+    // inverso pluralizando "Fiel" a moda inglesa ("fiels"), em vez do metodo
+    // real definido em Centro::fieis() — rebenta com BadMethodCallException
+    // (Call to undefined method App\Models\Centro::fiels()) sempre que o
+    // select verifica que centros ja estao vinculados (incl. ao pesquisar).
+    protected static ?string $inverseRelationship = 'fieis';
+
     protected static ?string $title = 'Vínculos a Centros';
 
     protected static ?string $recordTitleAttribute = 'nome';

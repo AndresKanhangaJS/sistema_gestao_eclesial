@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\UserResource;
+use App\Filament\Resources\UserResource\Pages\CreateUser;
 use App\Models\Banco;
 use App\Models\CategoriaDespesa;
 use App\Models\Centro;
@@ -12,6 +13,7 @@ use App\Models\Paroquia;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -75,6 +77,36 @@ class AdministradorParoquialTest extends TestCase
 
         $this->assertSame($paroquia->id, $novo->fresh()->paroquia_id);
         $this->assertTrue($novo->fresh()->hasRole('tesoureiro_centro'));
+    }
+
+    /**
+     * Regressao: o select de Centro no formulario ficava vazio porque a
+     * query da relationship filtrava por $get('paroquia_id') mesmo quando
+     * esse valor ainda nao tinha resolvido (null), e where('paroquia_id',
+     * null) nunca devolve nada.
+     */
+    public function test_select_de_centro_mostra_os_centros_da_propria_paroquia_ao_criar_tesoureiro_centro(): void
+    {
+        $paroquia = Paroquia::factory()->create();
+        $centro = Centro::factory()->create(['paroquia_id' => $paroquia->id]);
+        $administrador = $this->administradorDe($paroquia);
+
+        $this->actingAs($administrador);
+
+        Livewire::test(CreateUser::class)
+            ->fillForm([
+                'name' => 'Novo Tesoureiro Centro',
+                'email' => 'novo.tesoureiro.centro@sge.local',
+                'password' => 'password',
+                'role' => 'tesoureiro_centro',
+                'centro_id' => $centro->id,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $novo = User::where('email', 'novo.tesoureiro.centro@sge.local')->firstOrFail();
+        $this->assertSame($centro->id, $novo->centro_id);
+        $this->assertSame($paroquia->id, $novo->paroquia_id);
     }
 
     public function test_paroquia_id_do_novo_utilizador_ignora_adulteracao_do_cliente(): void

@@ -9,7 +9,7 @@
                 <th>Mês</th>
                 <th class="text-right">Dízimo</th>
                 <th class="text-right">Ofertório</th>
-                <th class="text-right">Campanha</th>
+                <th class="text-right">Outras Contribuições</th>
                 <th class="text-right">Total</th>
             </tr>
         </thead>

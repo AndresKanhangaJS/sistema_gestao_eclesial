@@ -59,12 +59,10 @@ class CategoriaDespesaResource extends Resource
                 Tables\Columns\TextColumn::make('movimentos_count')
                     ->label('Despesas lançadas')
                     ->counts('movimentos'),
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\IconColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'ativo',
-                        'danger' => 'inativo',
-                    ]),
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

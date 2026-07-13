@@ -24,7 +24,7 @@ class ArrecadacaoBarChart extends ChartWidget
             'datasets' => [
                 ['label' => 'Dízimo', 'data' => array_column($dados['por_mes_tipo'], 'dizimo'), 'backgroundColor' => '#3b82f6'],
                 ['label' => 'Ofertório', 'data' => array_column($dados['por_mes_tipo'], 'ofertorio'), 'backgroundColor' => '#10b981'],
-                ['label' => 'Campanha', 'data' => array_column($dados['por_mes_tipo'], 'campanha'), 'backgroundColor' => '#f59e0b'],
+                ['label' => 'Outras Contribuições', 'data' => array_column($dados['por_mes_tipo'], 'campanha'), 'backgroundColor' => '#f59e0b'],
             ],
             'labels' => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
         ];

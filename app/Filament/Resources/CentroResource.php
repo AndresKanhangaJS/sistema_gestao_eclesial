@@ -75,12 +75,10 @@ class CentroResource extends Resource
                 Tables\Columns\TextColumn::make('responsavel_local')
                     ->label('Responsável Local')
                     ->searchable(),
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\IconColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'ativo',
-                        'danger' => 'inativo',
-                    ]),
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FielResource\Pages;
 use App\Filament\Resources\FielResource\RelationManagers\CentrosRelationManager;
+use App\Filament\Resources\FielResource\RelationManagers\MovimentosRelationManager;
 use App\Models\Fiel;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -43,11 +44,15 @@ class FielResource extends Resource
                                 Forms\Components\TextInput::make('nome')
                                     ->required()
                                     ->maxLength(255),
+                                // Gerado automaticamente (Fiel::creating()) para nao
+                                // haver choques de codigos duplicados — nunca editavel
+                                // a mao. So aparece (desactivado) depois de criado.
                                 Forms\Components\TextInput::make('codigo_dizimista')
                                     ->label('Código de Dizimista')
-                                    ->required()
-                                    ->unique(ignoreRecord: true)
-                                    ->maxLength(255),
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->visible(fn (string $operation) => $operation === 'edit')
+                                    ->helperText('Gerado automaticamente.'),
                                 Forms\Components\DatePicker::make('data_nascimento')
                                     ->label('Data de Nascimento'),
                                 Forms\Components\Select::make('status')
@@ -90,12 +95,10 @@ class FielResource extends Resource
 
                         return $centro?->nome ?? 'Não vinculado';
                     }),
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\IconColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'ativo',
-                        'danger' => 'inativo',
-                    ]),
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()
@@ -143,6 +146,7 @@ class FielResource extends Resource
     {
         return [
             CentrosRelationManager::class,
+            MovimentosRelationManager::class,
         ];
     }
 

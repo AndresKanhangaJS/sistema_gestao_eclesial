@@ -12,11 +12,11 @@ Laravel 12 | Filament v3 | Livewire | Tailwind | MySQL 8.0 | Redis | Docker
 6. Nunca commitar credenciais — sempre .env
 7. Commits em português: feat: | fix: | refactor: | docs:
 
-## Perfis RBAC
-- admin_geral → acesso total ao sistema
-- administrador_paroquial → financeiro completo + conciliação bancária da sua paróquia (paridade com tesoureiro_paroquial) + gestão de utilizadores da própria paróquia (só pode atribuir os papéis tesoureiro_paroquial/tesoureiro_centro, nunca admin_geral/consultor/outro administrador_paroquial)
-- tesoureiro_paroquial → financeiro completo + conciliação bancária
-- tesoureiro_centro → apenas o seu centro
+## Perfis RBAC (hierarquia)
+- admin_geral → acesso total ao sistema; CRUD de Paróquias e regista qualquer papel, incl. administrador_paroquial
+- administrador_paroquial → faz tudo o que está ligado à sua própria paróquia: financeiro completo + conciliação bancária (paridade com tesoureiro_paroquial), regista utilizadores (tesoureiro_paroquial/tesoureiro_centro) e vincula-os aos centros da paróquia — nunca atribui admin_geral/consultor/outro administrador_paroquial
+- tesoureiro_paroquial → financeiro completo + conciliação bancária, sem gerir utilizadores
+- tesoureiro_centro → apenas o seu centro, sem conciliação
 - consultor → read-only global
 
 ## Convenções
