@@ -4,7 +4,19 @@
       "Bash(php -v)",
       "Bash(composer -V)",
       "Bash(docker compose exec *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(docker compose *)",
+      "Bash(docker exec *)",
+      "Skill(run)",
+      "Bash(npm ls *)",
+      "Bash(curl -sf http://localhost:8080 -o /dev/null)",
+      "Bash(timeout 20 bash -c 'until [ -f /tmp/claude-1000/-home-avk-projects-personal-sge/0f068e9f-95c9-4f48-b374-966f22e90c0e/tasks/ba8l8anco.output ]; do sleep 1; done')",
+      "Bash(python3 -c \"import playwright\")",
+      "Bash(pip3 list *)",
+      "Bash(apt list *)",
+      "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
