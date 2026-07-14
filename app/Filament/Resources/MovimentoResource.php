@@ -226,50 +226,52 @@ class MovimentoResource extends Resource
                     ->visible(fn () => ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false)),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('verComprovativo')
-                    ->label('Ver comprovativo')
-                    ->icon('heroicon-o-paper-clip')
-                    // So aparece se houver ficheiro E o disco activo estiver
-                    // mesmo utilizavel (o s3 exige bucket configurado —
-                    // gerar a URL assinada falha, e rebentaria o render da
-                    // tabela, sem isso).
-                    ->visible(fn (Movimento $record) => filled($record->comprovativo_path)
-                        && (config('filesystems.default') !== 's3' || filled(config('filesystems.disks.s3.bucket'))))
-                    ->url(function (Movimento $record) {
-                        $disk = config('filesystems.default');
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\Action::make('verComprovativo')
+                        ->label('Ver comprovativo')
+                        ->icon('heroicon-o-paper-clip')
+                        // So aparece se houver ficheiro E o disco activo estiver
+                        // mesmo utilizavel (o s3 exige bucket configurado —
+                        // gerar a URL assinada falha, e rebentaria o render da
+                        // tabela, sem isso).
+                        ->visible(fn (Movimento $record) => filled($record->comprovativo_path)
+                            && (config('filesystems.default') !== 's3' || filled(config('filesystems.disks.s3.bucket'))))
+                        ->url(function (Movimento $record) {
+                            $disk = config('filesystems.default');
 
-                        try {
-                            return $disk === 's3'
-                                ? Storage::disk($disk)->temporaryUrl($record->comprovativo_path, now()->addMinutes(60))
-                                : Storage::disk($disk)->url($record->comprovativo_path);
-                        } catch (\Throwable $e) {
-                            return null;
-                        }
-                    }, shouldOpenInNewTab: true),
-                Tables\Actions\Action::make('aprovar')
-                    ->label('Aprovar')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->visible(fn (Movimento $record) => $record->status_conciliacao === StatusConciliacao::Pendente
-                        && (Auth::user()?->can('aprovar', $record) ?? false))
-                    ->action(fn (Movimento $record) => $record->update(['status_conciliacao' => StatusConciliacao::Aprovado])),
-                Tables\Actions\Action::make('rejeitar')
-                    ->label('Rejeitar')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->visible(fn (Movimento $record) => $record->status_conciliacao === StatusConciliacao::Pendente
-                        && (Auth::user()?->can('rejeitar', $record) ?? false))
-                    ->form([
-                        Forms\Components\Textarea::make('motivo_rejeicao')
-                            ->label('Motivo da rejeição')
-                            ->required(),
-                    ])
-                    ->action(fn (array $data, Movimento $record) => $record->update([
-                        'status_conciliacao' => StatusConciliacao::Rejeitado,
-                        'motivo_rejeicao' => $data['motivo_rejeicao'],
-                    ])),
+                            try {
+                                return $disk === 's3'
+                                    ? Storage::disk($disk)->temporaryUrl($record->comprovativo_path, now()->addMinutes(60))
+                                    : Storage::disk($disk)->url($record->comprovativo_path);
+                            } catch (\Throwable $e) {
+                                return null;
+                            }
+                        }, shouldOpenInNewTab: true),
+                    Tables\Actions\Action::make('aprovar')
+                        ->label('Aprovar')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->visible(fn (Movimento $record) => $record->status_conciliacao === StatusConciliacao::Pendente
+                            && (Auth::user()?->can('aprovar', $record) ?? false))
+                        ->action(fn (Movimento $record) => $record->update(['status_conciliacao' => StatusConciliacao::Aprovado])),
+                    Tables\Actions\Action::make('rejeitar')
+                        ->label('Rejeitar')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->visible(fn (Movimento $record) => $record->status_conciliacao === StatusConciliacao::Pendente
+                            && (Auth::user()?->can('rejeitar', $record) ?? false))
+                        ->form([
+                            Forms\Components\Textarea::make('motivo_rejeicao')
+                                ->label('Motivo da rejeição')
+                                ->required(),
+                        ])
+                        ->action(fn (array $data, Movimento $record) => $record->update([
+                            'status_conciliacao' => StatusConciliacao::Rejeitado,
+                            'motivo_rejeicao' => $data['motivo_rejeicao'],
+                        ])),
+                ]),
             ])
             ->bulkActions([
                 //
