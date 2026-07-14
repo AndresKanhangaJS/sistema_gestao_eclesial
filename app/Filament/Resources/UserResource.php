@@ -84,81 +84,75 @@ class UserResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Dados de Acesso')
                             ->schema([
-                                Forms\Components\Section::make()
-                                    ->schema([
-                                        Forms\Components\TextInput::make('name')
-                                            ->label('Nome')
-                                            ->required()
-                                            ->maxLength(255),
-                                        Forms\Components\TextInput::make('email')
-                                            ->label('Email')
-                                            ->email()
-                                            ->required()
-                                            ->unique(ignoreRecord: true)
-                                            ->maxLength(255),
-                                        Forms\Components\TextInput::make('password')
-                                            ->label('Palavra-passe')
-                                            ->password()
-                                            ->revealable()
-                                            // O model faz cast 'hashed' — nao voltar a
-                                            // fazer Hash::make() aqui (dupla cifragem).
-                                            ->dehydrated(fn (?string $state) => filled($state))
-                                            ->required(fn (string $operation) => $operation === 'create')
-                                            ->maxLength(255),
-                                        Forms\Components\Select::make('role')
-                                            ->label('Papel')
-                                            ->options(fn () => self::papeisAtribuiveis())
-                                            ->required()
-                                            ->live(),
-                                        Forms\Components\Select::make('status')
-                                            ->label('Estado')
-                                            ->options([
-                                                'ativo' => 'Activo',
-                                                'inativo' => 'Inactivo',
-                                            ])
-                                            ->required()
-                                            ->default('ativo'),
-                                    ]),
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Nome')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('email')
+                                    ->label('Email')
+                                    ->email()
+                                    ->required()
+                                    ->unique(ignoreRecord: true)
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('password')
+                                    ->label('Palavra-passe')
+                                    ->password()
+                                    ->revealable()
+                                    // O model faz cast 'hashed' — nao voltar a
+                                    // fazer Hash::make() aqui (dupla cifragem).
+                                    ->dehydrated(fn (?string $state) => filled($state))
+                                    ->required(fn (string $operation) => $operation === 'create')
+                                    ->maxLength(255),
+                                Forms\Components\Select::make('role')
+                                    ->label('Papel')
+                                    ->options(fn () => self::papeisAtribuiveis())
+                                    ->required()
+                                    ->live(),
+                                Forms\Components\Select::make('status')
+                                    ->label('Estado')
+                                    ->options([
+                                        'ativo' => 'Activo',
+                                        'inativo' => 'Inactivo',
+                                    ])
+                                    ->required()
+                                    ->default('ativo'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Atribuição')
                             ->schema([
-                                Forms\Components\Section::make()
-                                    ->schema([
-                                        // So o admin_geral escolhe a paroquia livremente;
-                                        // o administrador_paroquial fica sempre preso a
-                                        // sua propria (ForcaParoquiaUtilizadorObserver
-                                        // reforca isto no servidor, mesmo que este campo
-                                        // seja adulterado no cliente).
-                                        Forms\Components\Select::make('paroquia_id')
-                                            ->label('Paróquia')
-                                            ->relationship('paroquia', 'nome')
-                                            ->required(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_PAROQUIA, true))
-                                            ->visible(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_PAROQUIA, true)
-                                                && (Auth::user()?->hasRole('admin_geral') ?? false))
-                                            ->default(fn () => Auth::user()?->paroquia_id)
-                                            ->live(),
-                                        Forms\Components\Select::make('centro_id')
-                                            ->label('Centro')
-                                            ->relationship(
-                                                'centro',
-                                                'nome',
-                                                function (Builder $query, Get $get) {
-                                                    // $get('paroquia_id') so resolve depois do admin_geral
-                                                    // escolher uma paroquia; para administrador_paroquial o
-                                                    // campo esta escondido, por isso cai sempre no fallback
-                                                    // da sua propria paroquia. Sem valor nenhum (admin_geral
-                                                    // ainda nao escolheu), nao filtra — Centro::where(...,
-                                                    // null) nunca devolveria nada.
-                                                    $paroquiaId = $get('paroquia_id') ?? Auth::user()?->paroquia_id;
+                                // So o admin_geral escolhe a paroquia livremente;
+                                // o administrador_paroquial fica sempre preso a
+                                // sua propria (ForcaParoquiaUtilizadorObserver
+                                // reforca isto no servidor, mesmo que este campo
+                                // seja adulterado no cliente).
+                                Forms\Components\Select::make('paroquia_id')
+                                    ->label('Paróquia')
+                                    ->relationship('paroquia', 'nome')
+                                    ->required(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_PAROQUIA, true))
+                                    ->visible(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_PAROQUIA, true)
+                                        && (Auth::user()?->hasRole('admin_geral') ?? false))
+                                    ->default(fn () => Auth::user()?->paroquia_id)
+                                    ->live(),
+                                Forms\Components\Select::make('centro_id')
+                                    ->label('Centro')
+                                    ->relationship(
+                                        'centro',
+                                        'nome',
+                                        function (Builder $query, Get $get) {
+                                            // $get('paroquia_id') so resolve depois do admin_geral
+                                            // escolher uma paroquia; para administrador_paroquial o
+                                            // campo esta escondido, por isso cai sempre no fallback
+                                            // da sua propria paroquia. Sem valor nenhum (admin_geral
+                                            // ainda nao escolheu), nao filtra — Centro::where(...,
+                                            // null) nunca devolveria nada.
+                                            $paroquiaId = $get('paroquia_id') ?? Auth::user()?->paroquia_id;
 
-                                                    if ($paroquiaId) {
-                                                        $query->where('paroquia_id', $paroquiaId);
-                                                    }
-                                                },
-                                            )
-                                            ->required(fn (Get $get) => $get('role') === 'tesoureiro_centro')
-                                            ->visible(fn (Get $get) => $get('role') === 'tesoureiro_centro'),
-                                    ]),
+                                            if ($paroquiaId) {
+                                                $query->where('paroquia_id', $paroquiaId);
+                                            }
+                                        },
+                                    )
+                                    ->required(fn (Get $get) => $get('role') === 'tesoureiro_centro')
+                                    ->visible(fn (Get $get) => $get('role') === 'tesoureiro_centro'),
                             ]),
                     ]),
             ]);
