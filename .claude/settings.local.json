@@ -16,7 +16,10 @@
       "Bash(apt list *)",
       "Bash(git status *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git push *)",
+      "Bash(git restore *)"
     ]
   }
 }
