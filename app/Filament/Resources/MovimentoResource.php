@@ -52,102 +52,108 @@ class MovimentoResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Lançamento')
                             ->schema([
-                                Forms\Components\Select::make('tipo')
-                                    ->label('Tipo')
-                                    ->options([
-                                        TipoMovimento::Dizimo->value => 'Dízimo',
-                                        TipoMovimento::Ofertorio->value => 'Ofertório',
-                                        TipoMovimento::Campanha->value => 'Outras Contribuições',
-                                        TipoMovimento::DespesaCentro->value => 'Despesa de Centro',
-                                    ])
-                                    ->required()
-                                    ->live(),
-                                Forms\Components\Select::make('centro_id')
-                                    ->label('Centro')
-                                    ->relationship('centro', 'nome')
-                                    ->required()
-                                    ->visible(fn () => ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false))
-                                    ->default(fn () => Auth::user()?->centro_id),
-                                Forms\Components\Select::make('fiel_id')
-                                    ->label('Fiel')
-                                    ->relationship('fiel', 'nome')
-                                    ->searchable()
-                                    ->preload()
-                                    ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
-                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
-                                Forms\Components\Select::make('categoria_despesa_id')
-                                    ->label('Categoria de Despesa')
-                                    ->relationship('categoriaDespesa', 'nome')
-                                    ->required(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value)
-                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value),
-                                Forms\Components\TextInput::make('valor')
-                                    ->label('Valor')
-                                    ->required()
-                                    ->numeric()
-                                    ->minValue(0.01)
-                                    ->prefix('Kz'),
-                                Forms\Components\DatePicker::make('data_movimento')
-                                    ->label('Data do Movimento')
-                                    ->required()
-                                    ->default(now()),
-                                Forms\Components\Select::make('ano_competencia')
-                                    ->label('Ano de competência')
-                                    ->options(fn () => array_combine(
-                                        range(now()->year - 2, now()->year),
-                                        range(now()->year - 2, now()->year),
-                                    ))
-                                    ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
-                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
-                                Forms\Components\Select::make('mes_competencia')
-                                    ->label('Mês de competência')
-                                    ->options(self::MESES)
-                                    ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
-                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
-                                    ->rule(function (Get $get, ?Model $record) {
-                                        return function (string $attribute, $value, \Closure $fail) use ($get, $record) {
-                                            if ($get('tipo') !== TipoMovimento::Dizimo->value) {
-                                                return;
-                                            }
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\Select::make('tipo')
+                                            ->label('Tipo')
+                                            ->options([
+                                                TipoMovimento::Dizimo->value => 'Dízimo',
+                                                TipoMovimento::Ofertorio->value => 'Ofertório',
+                                                TipoMovimento::Campanha->value => 'Outras Contribuições',
+                                                TipoMovimento::DespesaCentro->value => 'Despesa de Centro',
+                                            ])
+                                            ->required()
+                                            ->live(),
+                                        Forms\Components\Select::make('centro_id')
+                                            ->label('Centro')
+                                            ->relationship('centro', 'nome')
+                                            ->required()
+                                            ->visible(fn () => ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false))
+                                            ->default(fn () => Auth::user()?->centro_id),
+                                        Forms\Components\Select::make('fiel_id')
+                                            ->label('Fiel')
+                                            ->relationship('fiel', 'nome')
+                                            ->searchable()
+                                            ->preload()
+                                            ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
+                                            ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
+                                        Forms\Components\Select::make('categoria_despesa_id')
+                                            ->label('Categoria de Despesa')
+                                            ->relationship('categoriaDespesa', 'nome')
+                                            ->required(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value)
+                                            ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value),
+                                        Forms\Components\TextInput::make('valor')
+                                            ->label('Valor')
+                                            ->required()
+                                            ->numeric()
+                                            ->minValue(0.01)
+                                            ->prefix('Kz'),
+                                        Forms\Components\DatePicker::make('data_movimento')
+                                            ->label('Data do Movimento')
+                                            ->required()
+                                            ->default(now()),
+                                        Forms\Components\Select::make('ano_competencia')
+                                            ->label('Ano de competência')
+                                            ->options(fn () => array_combine(
+                                                range(now()->year - 2, now()->year),
+                                                range(now()->year - 2, now()->year),
+                                            ))
+                                            ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
+                                            ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
+                                        Forms\Components\Select::make('mes_competencia')
+                                            ->label('Mês de competência')
+                                            ->options(self::MESES)
+                                            ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
+                                            ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
+                                            ->rule(function (Get $get, ?Model $record) {
+                                                return function (string $attribute, $value, \Closure $fail) use ($get, $record) {
+                                                    if ($get('tipo') !== TipoMovimento::Dizimo->value) {
+                                                        return;
+                                                    }
 
-                                            $query = Movimento::where('fiel_id', $get('fiel_id'))
-                                                ->where('ano_competencia', $get('ano_competencia'))
-                                                ->where('mes_competencia', $value)
-                                                ->where('tipo', TipoMovimento::Dizimo->value);
+                                                    $query = Movimento::where('fiel_id', $get('fiel_id'))
+                                                        ->where('ano_competencia', $get('ano_competencia'))
+                                                        ->where('mes_competencia', $value)
+                                                        ->where('tipo', TipoMovimento::Dizimo->value);
 
-                                            if ($record) {
-                                                $query->whereKeyNot($record->getKey());
-                                            }
+                                                    if ($record) {
+                                                        $query->whereKeyNot($record->getKey());
+                                                    }
 
-                                            if ($query->exists()) {
-                                                $fail('Já existe um dízimo lançado para este fiel neste mês/ano.');
-                                            }
-                                        };
-                                    }),
+                                                    if ($query->exists()) {
+                                                        $fail('Já existe um dízimo lançado para este fiel neste mês/ano.');
+                                                    }
+                                                };
+                                            }),
+                                    ]),
                             ]),
                         Forms\Components\Tabs\Tab::make('Pagamento')
                             ->schema([
-                                Forms\Components\Select::make('metodo_pagamento_id')
-                                    ->label('Método de Pagamento')
-                                    ->relationship('metodoPagamento', 'nome')
-                                    ->required()
-                                    ->live(),
-                                Forms\Components\Select::make('banco_id')
-                                    ->label('Banco')
-                                    ->relationship('banco', 'nome_banco'),
-                                Forms\Components\TextInput::make('numero_referencia_bancaria')
-                                    ->label('Número de Referência Bancária')
-                                    ->unique(ignoreRecord: true)
-                                    ->maxLength(255),
-                                Forms\Components\FileUpload::make('comprovativo_path')
-                                    ->label('Comprovativo')
-                                    ->disk(config('filesystems.default'))
-                                    ->directory('comprovativos')
-                                    ->getUploadedFileNameForStorageUsing(
-                                        fn ($file) => Str::uuid().'.'.$file->getClientOriginalExtension()
-                                    )
-                                    ->required(
-                                        fn (Get $get) => MetodoPagamento::find($get('metodo_pagamento_id'))?->exige_comprovativo ?? false
-                                    ),
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\Select::make('metodo_pagamento_id')
+                                            ->label('Método de Pagamento')
+                                            ->relationship('metodoPagamento', 'nome')
+                                            ->required()
+                                            ->live(),
+                                        Forms\Components\Select::make('banco_id')
+                                            ->label('Banco')
+                                            ->relationship('banco', 'nome_banco'),
+                                        Forms\Components\TextInput::make('numero_referencia_bancaria')
+                                            ->label('Número de Referência Bancária')
+                                            ->unique(ignoreRecord: true)
+                                            ->maxLength(255),
+                                        Forms\Components\FileUpload::make('comprovativo_path')
+                                            ->label('Comprovativo')
+                                            ->disk(config('filesystems.default'))
+                                            ->directory('comprovativos')
+                                            ->getUploadedFileNameForStorageUsing(
+                                                fn ($file) => Str::uuid().'.'.$file->getClientOriginalExtension()
+                                            )
+                                            ->required(
+                                                fn (Get $get) => MetodoPagamento::find($get('metodo_pagamento_id'))?->exige_comprovativo ?? false
+                                            ),
+                                    ]),
                             ]),
                     ]),
             ]);

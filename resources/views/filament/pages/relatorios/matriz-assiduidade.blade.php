@@ -1,14 +1,17 @@
 <x-filament-panels::page>
     <div class="flex flex-wrap items-end gap-4">
-        <div class="w-48">
-            <x-filament::input.wrapper>
-                <select wire:model.live="centroId" class="fi-select-input block w-full">
-                    @foreach ($this->getCentrosDisponiveis() as $id => $nome)
-                        <option value="{{ $id }}">{{ $nome }}</option>
-                    @endforeach
-                </select>
-            </x-filament::input.wrapper>
-        </div>
+        @if ($this->mostrarFiltroCentro())
+            <div class="w-56">
+                <x-filament::input.wrapper>
+                    <select wire:model.live="centroId" class="fi-select-input block w-full">
+                        <option value="">Todos os centros</option>
+                        @foreach ($this->getCentrosDisponiveis() as $id => $nome)
+                            <option value="{{ $id }}">{{ $nome }}</option>
+                        @endforeach
+                    </select>
+                </x-filament::input.wrapper>
+            </div>
+        @endif
         <div class="w-32">
             <x-filament::input.wrapper>
                 <select wire:model.live="ano" class="fi-select-input block w-full">
@@ -16,6 +19,11 @@
                         <option value="{{ $anoOpcao }}">{{ $anoOpcao }}</option>
                     @endforeach
                 </select>
+            </x-filament::input.wrapper>
+        </div>
+        <div class="w-64">
+            <x-filament::input.wrapper>
+                <input type="text" wire:model.live.debounce.400ms="nomeFiel" placeholder="Pesquisar por nome do fiel" class="fi-input block w-full" />
             </x-filament::input.wrapper>
         </div>
         <div class="flex gap-2">
@@ -28,11 +36,17 @@
         </div>
     </div>
 
-    <div class="mt-4 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+    <p class="mt-4 text-sm text-gray-500">Total: {{ count($this->linhas) }} {{ count($this->linhas) === 1 ? 'fiel' : 'fiéis' }}</p>
+
+    <div class="mt-2 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
+                    <th class="px-3 py-2 text-right">#</th>
                     <th class="px-3 py-2 text-left">Fiel</th>
+                    @if ($this->mostrarFiltroCentro())
+                        <th class="px-3 py-2 text-left">Centro</th>
+                    @endif
                     @foreach (['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] as $mesLabel)
                         <th class="px-2 py-2 text-center">{{ $mesLabel }}</th>
                     @endforeach
@@ -40,9 +54,13 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse ($this->linhas as $linha)
+                @forelse ($this->linhas as $i => $linha)
                     <tr class="border-t border-gray-100 dark:border-gray-700">
+                        <td class="px-3 py-2 text-right text-gray-500">{{ $i + 1 }}</td>
                         <td class="px-3 py-2 whitespace-nowrap">{{ $linha['fiel']->nome }}</td>
+                        @if ($this->mostrarFiltroCentro())
+                            <td class="px-3 py-2 whitespace-nowrap text-gray-500">{{ $linha['fiel']->centros->pluck('nome')->join(', ') }}</td>
+                        @endif
                         @foreach ($linha['meses'] as $estado)
                             <td class="px-1 py-2 text-center">
                                 @if ($estado === 'pago')
@@ -71,7 +89,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="14" class="px-3 py-6 text-center text-gray-400">Sem dados para este centro/ano.</td>
+                        <td colspan="{{ $this->mostrarFiltroCentro() ? 16 : 15 }}" class="px-3 py-6 text-center text-gray-400">Nenhum fiel encontrado para este filtro.</td>
                     </tr>
                 @endforelse
             </tbody>

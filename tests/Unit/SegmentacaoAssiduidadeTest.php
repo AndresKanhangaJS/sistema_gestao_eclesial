@@ -48,7 +48,7 @@ class SegmentacaoAssiduidadeTest extends TestCase
         $ano = (int) now()->year;
         $this->pagarMeses($centro, $fiel, range(1, 8), $ano);
 
-        $linha = collect(MatrizDizimosService::calcular($centro->id, $ano))->firstWhere('fiel.id', $fiel->id);
+        $linha = collect(MatrizDizimosService::calcular([$centro->id], $ano))->firstWhere('fiel.id', $fiel->id);
 
         $this->assertSame(8, $linha['total_pagos']);
         $this->assertSame('Regular', $linha['segmento']);
@@ -81,7 +81,7 @@ class SegmentacaoAssiduidadeTest extends TestCase
             $fiel->centros()->attach($centro->id, ['data_inicio' => now()->startOfYear()]);
             $this->pagarMeses($centro, $fiel, $totalPagos > 0 ? range(1, $totalPagos) : [], $ano);
 
-            $linha = collect(MatrizDizimosService::calcular($centro->id, $ano))->firstWhere('fiel.id', $fiel->id);
+            $linha = collect(MatrizDizimosService::calcular([$centro->id], $ano))->firstWhere('fiel.id', $fiel->id);
 
             $this->assertSame($totalPagos, $linha['total_pagos'], "total_pagos={$totalPagos}");
             $this->assertSame($segmentoEsperado, $linha['segmento'], "total_pagos={$totalPagos} deveria ser {$segmentoEsperado}");

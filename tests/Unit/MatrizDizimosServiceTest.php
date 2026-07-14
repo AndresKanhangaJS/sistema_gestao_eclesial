@@ -59,9 +59,9 @@ class MatrizDizimosServiceTest extends TestCase
             ]);
         }
 
-        $linhaCentroA = collect(MatrizDizimosService::calcular($centroA->id, $ano))
+        $linhaCentroA = collect(MatrizDizimosService::calcular([$centroA->id], $ano))
             ->firstWhere('fiel.id', $fiel->id);
-        $linhaCentroB = collect(MatrizDizimosService::calcular($centroB->id, $ano))
+        $linhaCentroB = collect(MatrizDizimosService::calcular([$centroB->id], $ano))
             ->firstWhere('fiel.id', $fiel->id);
 
         $this->assertSame(12, $linhaCentroA['total_pagos']);

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enums\TipoMovimento;
+use App\Filament\Concerns\FiltraMatrizDizimos;
 use App\Models\Banco;
 use App\Models\Centro;
 use App\Models\Fiel;
@@ -25,6 +26,7 @@ use Livewire\Attributes\Computed;
 
 class MatrizDizimos extends Page implements HasActions, HasForms
 {
+    use FiltraMatrizDizimos;
     use InteractsWithActions;
     use InteractsWithForms;
 
@@ -38,10 +40,6 @@ class MatrizDizimos extends Page implements HasActions, HasForms
 
     protected static string $view = 'filament.pages.matriz-dizimos';
 
-    public ?int $centroId = null;
-
-    public int $ano;
-
     public static function canAccess(): bool
     {
         return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
@@ -49,41 +47,15 @@ class MatrizDizimos extends Page implements HasActions, HasForms
 
     public function mount(): void
     {
-        $this->ano = (int) now()->year;
-
-        $user = Auth::user();
-
-        $this->centroId = $user->hasRole('tesoureiro_centro')
-            ? $user->centro_id
-            : Centro::query()->orderBy('nome')->value('id');
-    }
-
-    public function getCentrosDisponiveis(): array
-    {
-        $user = Auth::user();
-
-        if ($user->hasRole('tesoureiro_centro')) {
-            return Centro::where('id', $user->centro_id)->pluck('nome', 'id')->all();
-        }
-
-        return Centro::orderBy('nome')->pluck('nome', 'id')->all();
-    }
-
-    public function getAnosDisponiveis(): array
-    {
-        $anoAtual = (int) now()->year;
-
-        return array_combine(range($anoAtual - 2, $anoAtual), range($anoAtual - 2, $anoAtual));
+        $this->inicializarFiltros();
     }
 
     #[Computed]
     public function matriz(): array
     {
-        if (! $this->centroId) {
-            return [];
-        }
-
-        return MatrizDizimosService::calcular($this->centroId, $this->ano);
+        return $this->filtrarPorNome(
+            MatrizDizimosService::calcular($this->centrosParaConsulta(), $this->ano)
+        );
     }
 
     public function lancarLoteAction(): Action
@@ -91,6 +63,9 @@ class MatrizDizimos extends Page implements HasActions, HasForms
         return Action::make('lancarLote')
             ->label('Lançar dízimos em lote')
             ->modalHeading('Lançar dízimos em lote')
+            // So faz sentido lancar num centro concreto — em "Todos os
+            // centros" (centroId nulo) nao ha para onde escrever.
+            ->visible(fn () => filled($this->centroId))
             ->form([
                 Forms\Components\CheckboxList::make('meses')
                     ->label('Meses a lançar')

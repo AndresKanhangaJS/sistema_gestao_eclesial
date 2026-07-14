@@ -27,22 +27,25 @@ class CategoriaDespesaResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Hidden::make('paroquia_id')
-                    ->default(fn () => Auth::user()?->paroquia_id),
-                Forms\Components\TextInput::make('nome')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('descricao')
-                    ->label('Descrição')
-                    ->columnSpanFull(),
-                Forms\Components\Select::make('status')
-                    ->label('Estado')
-                    ->options([
-                        'ativo' => 'Activo',
-                        'inativo' => 'Inactivo',
-                    ])
-                    ->required()
-                    ->default('ativo'),
+                Forms\Components\Section::make()
+                    ->schema([
+                        Forms\Components\Hidden::make('paroquia_id')
+                            ->default(fn () => Auth::user()?->paroquia_id),
+                        Forms\Components\TextInput::make('nome')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('descricao')
+                            ->label('Descrição')
+                            ->columnSpanFull(),
+                        Forms\Components\Select::make('status')
+                            ->label('Estado')
+                            ->options([
+                                'ativo' => 'Activo',
+                                'inativo' => 'Inactivo',
+                            ])
+                            ->required()
+                            ->default('ativo'),
+                    ]),
             ]);
     }
 

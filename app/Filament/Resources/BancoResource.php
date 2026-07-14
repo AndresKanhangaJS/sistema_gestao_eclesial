@@ -27,36 +27,39 @@ class BancoResource extends Resource
     {
         return $form
             ->schema([
-                // paroquia_id nao esta no formulario: o ForcaParoquiaUtilizadorObserver
-                // fixa-o sempre a partir do utilizador autenticado (excepto admin_geral).
-                Forms\Components\Select::make('paroquia_id')
-                    ->label('Paróquia')
-                    ->relationship('paroquia', 'nome')
-                    ->required()
-                    ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
-                    ->default(fn () => Auth::user()?->paroquia_id),
-                Forms\Components\TextInput::make('nome_banco')
-                    ->label('Nome do Banco')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('sigla')
-                    ->label('Sigla')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('numero_conta')
-                    ->label('Número de Conta')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('iban')
-                    ->label('IBAN')
-                    ->maxLength(255),
-                Forms\Components\Select::make('status')
-                    ->label('Estado')
-                    ->options([
-                        'ativo' => 'Activo',
-                        'inativo' => 'Inactivo',
-                    ])
-                    ->required()
-                    ->default('ativo'),
+                Forms\Components\Section::make()
+                    ->schema([
+                        // paroquia_id nao esta no formulario: o ForcaParoquiaUtilizadorObserver
+                        // fixa-o sempre a partir do utilizador autenticado (excepto admin_geral).
+                        Forms\Components\Select::make('paroquia_id')
+                            ->label('Paróquia')
+                            ->relationship('paroquia', 'nome')
+                            ->required()
+                            ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
+                            ->default(fn () => Auth::user()?->paroquia_id),
+                        Forms\Components\TextInput::make('nome_banco')
+                            ->label('Nome do Banco')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('sigla')
+                            ->label('Sigla')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('numero_conta')
+                            ->label('Número de Conta')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('iban')
+                            ->label('IBAN')
+                            ->maxLength(255),
+                        Forms\Components\Select::make('status')
+                            ->label('Estado')
+                            ->options([
+                                'ativo' => 'Activo',
+                                'inativo' => 'Inactivo',
+                            ])
+                            ->required()
+                            ->default('ativo'),
+                    ]),
             ]);
     }
 

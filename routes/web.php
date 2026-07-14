@@ -34,10 +34,10 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
         $user = Auth::user();
         abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : (int) $request->query('centro_id');
         $ano = (int) $request->query('ano', now()->year);
+        $centroIds = MatrizDizimosService::centrosPermitidos($user, $request->query('centro_id'));
 
-        $linhas = MatrizDizimosService::calcular($centroId, $ano);
+        $linhas = MatrizDizimosService::calcular($centroIds, $ano);
         $meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
         $rows = collect($linhas)->map(function ($linha) use ($meses) {
@@ -60,19 +60,19 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
         $user = Auth::user();
         abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : (int) $request->query('centro_id');
         $ano = (int) $request->query('ano', now()->year);
-        // Sem withoutGlobalScopes(): a ParoquiaScope do Centro garante que um
-        // tesoureiro_paroquial nao consegue, por query string, obter dados
-        // (nem sequer o nome) de um centro de outra paroquia.
-        $centro = Centro::findOrFail($centroId);
+        $centroIds = MatrizDizimosService::centrosPermitidos($user, $request->query('centro_id'));
+        // "Todos os centros" (mais de um id resolvido) nao tem um Centro
+        // unico para o cabecalho do PDF — so se mostra quando a consulta
+        // ficou mesmo restrita a um.
+        $centro = count($centroIds) === 1 ? Centro::find($centroIds[0]) : null;
 
         return RelatorioPdf::view('pdfs.relatorios.matriz-assiduidade', [
             'titulo' => 'Matriz de Assiduidade do Dízimo',
-            'paroquia' => $centro->paroquia,
+            'paroquia' => $centro?->paroquia ?? $user->paroquia,
             'centro' => $centro,
             'ano' => $ano,
-            'linhas' => MatrizDizimosService::calcular($centroId, $ano),
+            'linhas' => MatrizDizimosService::calcular($centroIds, $ano),
         ])->name('matriz-assiduidade.pdf');
     })->name('matriz-assiduidade.pdf');
 

@@ -1,7 +1,7 @@
 @extends('pdfs.layout')
 
 @section('conteudo')
-    <p><strong>Centro:</strong> {{ $centro->nome }} &middot; <strong>Ano:</strong> {{ $ano }}</p>
+    <p><strong>Centro:</strong> {{ $centro?->nome ?? 'Todos os centros' }} &middot; <strong>Ano:</strong> {{ $ano }}</p>
 
     <table>
         <thead>

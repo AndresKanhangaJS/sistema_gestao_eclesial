@@ -35,43 +35,49 @@ class FielResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Dados Pessoais')
                             ->schema([
-                                Forms\Components\Select::make('paroquia_id')
-                                    ->label('Paróquia')
-                                    ->relationship('paroquia', 'nome')
-                                    ->required()
-                                    ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
-                                    ->default(fn () => Auth::user()?->paroquia_id),
-                                Forms\Components\TextInput::make('nome')
-                                    ->required()
-                                    ->maxLength(255),
-                                // Gerado automaticamente (Fiel::creating()) para nao
-                                // haver choques de codigos duplicados — nunca editavel
-                                // a mao. So aparece (desactivado) depois de criado.
-                                Forms\Components\TextInput::make('codigo_dizimista')
-                                    ->label('Código de Dizimista')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->visible(fn (string $operation) => $operation === 'edit')
-                                    ->helperText('Gerado automaticamente.'),
-                                Forms\Components\DatePicker::make('data_nascimento')
-                                    ->label('Data de Nascimento'),
-                                Forms\Components\Select::make('status')
-                                    ->label('Estado')
-                                    ->options([
-                                        'ativo' => 'Activo',
-                                        'inativo' => 'Inactivo',
-                                    ])
-                                    ->required()
-                                    ->default('ativo'),
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\Select::make('paroquia_id')
+                                            ->label('Paróquia')
+                                            ->relationship('paroquia', 'nome')
+                                            ->required()
+                                            ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
+                                            ->default(fn () => Auth::user()?->paroquia_id),
+                                        Forms\Components\TextInput::make('nome')
+                                            ->required()
+                                            ->maxLength(255),
+                                        // Gerado automaticamente (Fiel::creating()) para nao
+                                        // haver choques de codigos duplicados — nunca editavel
+                                        // a mao. So aparece (desactivado) depois de criado.
+                                        Forms\Components\TextInput::make('codigo_dizimista')
+                                            ->label('Código de Dizimista')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->visible(fn (string $operation) => $operation === 'edit')
+                                            ->helperText('Gerado automaticamente.'),
+                                        Forms\Components\DatePicker::make('data_nascimento')
+                                            ->label('Data de Nascimento'),
+                                        Forms\Components\Select::make('status')
+                                            ->label('Estado')
+                                            ->options([
+                                                'ativo' => 'Activo',
+                                                'inativo' => 'Inactivo',
+                                            ])
+                                            ->required()
+                                            ->default('ativo'),
+                                    ]),
                             ]),
                         Forms\Components\Tabs\Tab::make('Contacto')
                             ->schema([
-                                Forms\Components\TextInput::make('telefone')
-                                    ->tel()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('email')
-                                    ->email()
-                                    ->maxLength(255),
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\TextInput::make('telefone')
+                                            ->tel()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('email')
+                                            ->email()
+                                            ->maxLength(255),
+                                    ]),
                             ]),
                     ]),
             ]);
@@ -80,6 +86,7 @@ class FielResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('nome')
             ->columns([
                 Tables\Columns\TextColumn::make('nome')
                     ->searchable()

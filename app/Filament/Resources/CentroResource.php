@@ -29,31 +29,34 @@ class CentroResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('paroquia_id')
-                    ->label('Paróquia')
-                    ->relationship('paroquia', 'nome')
-                    ->required()
-                    // So admin_geral escolhe a paroquia; as outras roles ficam
-                    // automaticamente presas a paroquia do proprio utilizador.
-                    ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
-                    ->default(fn () => Auth::user()?->paroquia_id),
-                Forms\Components\TextInput::make('nome')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('localizacao')
-                    ->label('Localização')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('responsavel_local')
-                    ->label('Responsável Local')
-                    ->maxLength(255),
-                Forms\Components\Select::make('status')
-                    ->label('Estado')
-                    ->options([
-                        'ativo' => 'Activo',
-                        'inativo' => 'Inactivo',
-                    ])
-                    ->required()
-                    ->default('ativo'),
+                Forms\Components\Section::make()
+                    ->schema([
+                        Forms\Components\Select::make('paroquia_id')
+                            ->label('Paróquia')
+                            ->relationship('paroquia', 'nome')
+                            ->required()
+                            // So admin_geral escolhe a paroquia; as outras roles ficam
+                            // automaticamente presas a paroquia do proprio utilizador.
+                            ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
+                            ->default(fn () => Auth::user()?->paroquia_id),
+                        Forms\Components\TextInput::make('nome')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('localizacao')
+                            ->label('Localização')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('responsavel_local')
+                            ->label('Responsável Local')
+                            ->maxLength(255),
+                        Forms\Components\Select::make('status')
+                            ->label('Estado')
+                            ->options([
+                                'ativo' => 'Activo',
+                                'inativo' => 'Inactivo',
+                            ])
+                            ->required()
+                            ->default('ativo'),
+                    ]),
             ]);
     }
 

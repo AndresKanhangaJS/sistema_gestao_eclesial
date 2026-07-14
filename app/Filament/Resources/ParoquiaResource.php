@@ -31,40 +31,46 @@ class ParoquiaResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Dados Gerais')
                             ->schema([
-                                Forms\Components\TextInput::make('nome')
-                                    ->required()
-                                    ->unique(ignoreRecord: true)
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('diocese')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\Select::make('status')
-                                    ->label('Estado')
-                                    ->options([
-                                        'ativo' => 'Activo',
-                                        'inativo' => 'Inactivo',
-                                    ])
-                                    ->required()
-                                    ->default('ativo'),
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\TextInput::make('nome')
+                                            ->required()
+                                            ->unique(ignoreRecord: true)
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('diocese')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\Select::make('status')
+                                            ->label('Estado')
+                                            ->options([
+                                                'ativo' => 'Activo',
+                                                'inativo' => 'Inactivo',
+                                            ])
+                                            ->required()
+                                            ->default('ativo'),
+                                    ]),
                             ]),
                         Forms\Components\Tabs\Tab::make('Contacto')
                             ->schema([
-                                Forms\Components\TextInput::make('morada')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('responsavel')
-                                    ->label('Responsável')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('email_contato')
-                                    ->label('Email de Contacto')
-                                    ->email()
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('telefone')
-                                    ->tel()
-                                    ->required()
-                                    ->maxLength(255),
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\TextInput::make('morada')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('responsavel')
+                                            ->label('Responsável')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('email_contato')
+                                            ->label('Email de Contacto')
+                                            ->email()
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('telefone')
+                                            ->tel()
+                                            ->required()
+                                            ->maxLength(255),
+                                    ]),
                             ]),
                     ]),
             ]);
