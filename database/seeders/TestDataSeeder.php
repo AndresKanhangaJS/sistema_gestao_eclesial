@@ -36,6 +36,11 @@ class TestDataSeeder extends Seeder
             ['role' => 'tesoureiro_paroquial', 'paroquia_id' => $paroquia->id, 'centro_id' => null],
             ['role' => 'tesoureiro_centro', 'paroquia_id' => $paroquia->id, 'centro_id' => $centro->id],
             ['role' => 'consultor', 'paroquia_id' => null, 'centro_id' => null],
+            // Modulo Catequese (docs/modulos/catequese.md)
+            ['role' => 'coordenador_catequese_paroquia', 'paroquia_id' => $paroquia->id, 'centro_id' => null],
+            ['role' => 'coordenador_catequese_centro', 'paroquia_id' => $paroquia->id, 'centro_id' => $centro->id],
+            ['role' => 'secretario_catequese', 'paroquia_id' => $paroquia->id, 'centro_id' => $centro->id],
+            ['role' => 'tesoureiro_catequese', 'paroquia_id' => $paroquia->id, 'centro_id' => $centro->id],
         ];
 
         foreach ($utilizadores as $dados) {

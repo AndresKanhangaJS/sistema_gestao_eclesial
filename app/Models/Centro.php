@@ -48,4 +48,24 @@ class Centro extends Model
             ->withPivot(['data_inicio', 'data_fim', 'principal', 'motivo_transferencia'])
             ->withTimestamps();
     }
+
+    public function catequizandos(): HasMany
+    {
+        return $this->hasMany(Catequizando::class);
+    }
+
+    public function catequizandoCentros(): HasMany
+    {
+        return $this->hasMany(CatequizandoCentro::class);
+    }
+
+    public function catequistas(): HasMany
+    {
+        return $this->hasMany(Catequista::class);
+    }
+
+    public function turmas(): HasMany
+    {
+        return $this->hasMany(Turma::class);
+    }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Fiel extends Model
@@ -85,5 +86,15 @@ class Fiel extends Model
     public function movimentos(): HasMany
     {
         return $this->hasMany(Movimento::class);
+    }
+
+    public function catequizando(): HasOne
+    {
+        return $this->hasOne(Catequizando::class);
+    }
+
+    public function catequista(): HasOne
+    {
+        return $this->hasOne(Catequista::class);
     }
 }

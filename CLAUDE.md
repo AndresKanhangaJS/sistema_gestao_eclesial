@@ -35,6 +35,7 @@ Laravel 12 | Filament v3 | Livewire | Tailwind | MySQL 8.0 | Redis | Docker
 6. Despesas + Categorias
 7. Relatórios + Exportação PDF/Excel
 8. Notificações (Email + SMS + WhatsApp)
+9. Catequese (Catequizandos, Turmas, Catequistas) — ver docs/modulos/catequese.md para a especificação completa; ainda em desenho, implementação por começar
 
 ## Constraint Crítica
 Unique Key em movimentos: (fiel_id, ano_competencia, mes_competencia) WHERE tipo = 'dizimo'

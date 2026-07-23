@@ -17,8 +17,13 @@ use Illuminate\Support\Facades\Auth;
  * Gestao de utilizadores e atribuicao de papel/paroquia/centro.
  * admin_geral gere tudo, sem restricoes (UserPolicy).
  * administrador_paroquial gere utilizadores da sua propria paroquia, mas so
- * pode atribuir os papeis tesoureiro_paroquial/tesoureiro_centro — nunca
- * admin_geral, consultor ou outro administrador_paroquial (ver
+ * pode atribuir os papeis tesoureiro_paroquial/tesoureiro_centro (financeiro)
+ * e coordenador_catequese_paroquia/secretario_catequese (catequese) — nunca
+ * admin_geral, consultor, outro administrador_paroquial, nem (por agora)
+ * coordenador_catequese_centro/tesoureiro_catequese, que ficam reservados a
+ * admin_geral ate o modulo Catequese delegar a sua propria gestao de
+ * utilizadores a coordenador_catequese_paroquia (ver
+ * docs/modulos/catequese.md, pendencia de RBAC) (ver
  * papeisAtribuiveis()/papelPermitido(), reforcado em UserPolicy).
  */
 class UserResource extends Resource
@@ -39,14 +44,29 @@ class UserResource extends Resource
         'tesoureiro_paroquial' => 'Tesoureiro Paroquial',
         'tesoureiro_centro' => 'Tesoureiro de Centro',
         'consultor' => 'Consultor',
+        'coordenador_catequese_paroquia' => 'Coordenador de Catequese (Paróquia)',
+        'coordenador_catequese_centro' => 'Coordenador de Catequese (Centro)',
+        'secretario_catequese' => 'Secretário de Catequese',
+        'tesoureiro_catequese' => 'Tesoureiro de Catequese',
     ];
 
-    private const PAPEIS_COM_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro'];
+    private const PAPEIS_COM_PAROQUIA = [
+        'administrador_paroquial',
+        'tesoureiro_paroquial',
+        'tesoureiro_centro',
+        'coordenador_catequese_paroquia',
+        'coordenador_catequese_centro',
+        'secretario_catequese',
+        'tesoureiro_catequese',
+    ];
+
+    private const PAPEIS_COM_CENTRO = ['tesoureiro_centro', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'];
 
     /**
      * Papeis que o utilizador autenticado pode atribuir a outros. admin_geral
      * escolhe livremente; administrador_paroquial so pode criar/editar
-     * tesoureiro_paroquial e tesoureiro_centro na sua propria paroquia.
+     * tesoureiro_paroquial, tesoureiro_centro, coordenador_catequese_paroquia
+     * e secretario_catequese na sua propria paroquia.
      *
      * @return array<string, string>
      */
@@ -59,6 +79,8 @@ class UserResource extends Resource
         return [
             'tesoureiro_paroquial' => self::PAPEIS['tesoureiro_paroquial'],
             'tesoureiro_centro' => self::PAPEIS['tesoureiro_centro'],
+            'coordenador_catequese_paroquia' => self::PAPEIS['coordenador_catequese_paroquia'],
+            'secretario_catequese' => self::PAPEIS['secretario_catequese'],
         ];
     }
 
@@ -151,8 +173,8 @@ class UserResource extends Resource
                                             }
                                         },
                                     )
-                                    ->required(fn (Get $get) => $get('role') === 'tesoureiro_centro')
-                                    ->visible(fn (Get $get) => $get('role') === 'tesoureiro_centro'),
+                                    ->required(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_CENTRO, true))
+                                    ->visible(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_CENTRO, true)),
                             ]),
                     ]),
             ]);

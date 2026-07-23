@@ -18,6 +18,17 @@ class EstatisticasGeraisWidget extends BaseWidget
 {
     protected static ?int $sort = -10;
 
+    /**
+     * O pessoal da Catequese (papeis dedicados, nunca combinados com os
+     * financeiros) tem o seu proprio dashboard — ver CatequeseEstatisticasWidget.
+     */
+    public static function canView(): bool
+    {
+        return ! (Auth::user()?->hasRole([
+            'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese',
+        ]) ?? false);
+    }
+
     protected function getStats(): array
     {
         $user = Auth::user();

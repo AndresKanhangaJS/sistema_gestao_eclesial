@@ -19,7 +19,24 @@
       "Bash(git commit *)",
       "Bash(git pull *)",
       "Bash(git push *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Read(///wsl.localhost/Ubuntu/home/avk/projects/**)",
+      "Read(//c/Users/andre/projects/**)",
+      "Bash(export MSYS_NO_PATHCONV=1)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php php /var/www/html/artisan route:list)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php pwd)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec -w /var/www/html sge_php php artisan --version)",
+      "Read(///wsl.localhost/Ubuntu//**)",
+      "Read(///wsl.localhost/Ubuntu/home/avk/projects/personal/sge/vendor/**)",
+      "Read(///wsl.localhost/Ubuntu/home/avk/projects/personal/sge/vendor/filament/tables/**)",
+      "Read(///wsl.localhost/Ubuntu/home/avk/projects/personal/sge/vendor/filament/filament/src/Resources/**)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php php /var/www/html/artisan about)",
+      "Bash(docker cp *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php php /var/www/html/test_resources.php)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php php /var/www/html/test_routes.php)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php tail -100 /var/www/html/storage/logs/laravel.log)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php grep -n \"PDO->prepare\\\\|SQLSTATE\\\\|production.ERROR\" /var/www/html/storage/logs/laravel.log)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec sge_php *)"
     ]
   }
 }

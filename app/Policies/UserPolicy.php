@@ -7,15 +7,23 @@ use App\Models\User;
 /**
  * admin_geral tem acesso total via Gate::before (AppServiceProvider).
  * administrador_paroquial gere utilizadores da sua propria paroquia, mas so
- * os que tem papel tesoureiro_paroquial ou tesoureiro_centro — nunca
- * admin_geral, consultor, ou outro administrador_paroquial (mesmo que
- * estivesse, em teoria, na mesma paroquia). A lista de papeis atribuiveis
- * na criacao/edicao vive em UserResource::papeisAtribuiveis()/papelPermitido().
+ * os que tem papel tesoureiro_paroquial, tesoureiro_centro,
+ * coordenador_catequese_paroquia ou secretario_catequese — nunca admin_geral,
+ * consultor, outro administrador_paroquial, nem (por agora)
+ * coordenador_catequese_centro/tesoureiro_catequese (ver
+ * docs/modulos/catequese.md, pendencia de RBAC). A lista de papeis
+ * atribuiveis na criacao/edicao vive em
+ * UserResource::papeisAtribuiveis()/papelPermitido().
  * Nenhum outro papel tem qualquer acesso aqui.
  */
 class UserPolicy
 {
-    private const PAPEIS_GERIVEIS = ['tesoureiro_paroquial', 'tesoureiro_centro'];
+    private const PAPEIS_GERIVEIS = [
+        'tesoureiro_paroquial',
+        'tesoureiro_centro',
+        'coordenador_catequese_paroquia',
+        'secretario_catequese',
+    ];
 
     public function viewAny(User $user): bool
     {

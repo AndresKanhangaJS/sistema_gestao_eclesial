@@ -12,6 +12,14 @@ class ArrecadacaoBarChart extends ChartWidget
 
     public ?int $ano = null;
 
+    /** @see EstatisticasGeraisWidget::canView() */
+    public static function canView(): bool
+    {
+        return ! (Auth::user()?->hasRole([
+            'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese',
+        ]) ?? false);
+    }
+
     protected function getData(): array
     {
         $ano = $this->ano ?? now()->year;

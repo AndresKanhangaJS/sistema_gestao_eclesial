@@ -44,4 +44,29 @@ class Paroquia extends Model
     {
         return $this->hasMany(Movimento::class);
     }
+
+    public function anosLetivos(): HasMany
+    {
+        return $this->hasMany(AnoLetivo::class);
+    }
+
+    public function catequizandos(): HasMany
+    {
+        return $this->hasMany(Catequizando::class);
+    }
+
+    public function catequistas(): HasMany
+    {
+        return $this->hasMany(Catequista::class);
+    }
+
+    public function turmas(): HasMany
+    {
+        return $this->hasMany(Turma::class);
+    }
+
+    public function inscricoes(): HasMany
+    {
+        return $this->hasMany(Inscricao::class);
+    }
 }
