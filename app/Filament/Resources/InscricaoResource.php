@@ -245,6 +245,7 @@ class InscricaoResource extends Resource
                     rotaExcel: 'relatorios.inscricoes.excel',
                     rotaPdf: 'relatorios.inscricoes.pdf',
                     comAnoLectivo: true,
+                    comCentro: true,
                 ),
             ])
             ->actions([

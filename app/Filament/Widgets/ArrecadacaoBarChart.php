@@ -18,6 +18,13 @@ class ArrecadacaoBarChart extends ChartWidget
 
     public ?int $ano = null;
 
+    // Preenchido pela pagina de relatorio quando ja resolveu um centro
+    // especifico via FiltraPorCentro (selector "Todos os centros"/um
+    // centro); sem valor explicito, cai no papel do utilizador — mesmo
+    // comportamento de sempre no dashboard, onde este widget e montado sem
+    // parametros.
+    public ?int $centroId = null;
+
     /** @see EstatisticasGeraisWidget::canView() */
     public static function canView(): bool
     {
@@ -31,7 +38,7 @@ class ArrecadacaoBarChart extends ChartWidget
     {
         $ano = $this->ano ?? now()->year;
         $user = Auth::user();
-        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
+        $centroId = $this->centroId ?? ($user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null);
 
         $dados = DemonstrativoArrecadacaoService::calcular($ano, $centroId);
 

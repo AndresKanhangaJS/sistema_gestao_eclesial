@@ -6,6 +6,7 @@ use App\Models\Concerns\TemIdMascarado;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Paroquia extends Model
 {
@@ -20,7 +21,33 @@ class Paroquia extends Model
         'email_contato',
         'telefone',
         'status',
+        'logo_path',
     ];
+
+    /**
+     * Data URI (base64) do logotipo, para embutir directamente no HTML dos
+     * PDFs exportados (RelatorioPdf/Browsershot renderiza via Chromium
+     * headless) — evita depender do disco activo ('local'/'s3') conseguir
+     * resolver uma URL publicamente acessível a partir do processo do
+     * Chromium, que não tem sessão de utilizador nem, no caso do disco
+     * 'local', necessariamente uma rota pública configurada.
+     */
+    public function logoBase64(): ?string
+    {
+        if (blank($this->logo_path)) {
+            return null;
+        }
+
+        $disk = Storage::disk(config('filesystems.default'));
+
+        if (! $disk->exists($this->logo_path)) {
+            return null;
+        }
+
+        $mime = $disk->mimeType($this->logo_path) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode($disk->get($this->logo_path));
+    }
 
     public function centros(): HasMany
     {

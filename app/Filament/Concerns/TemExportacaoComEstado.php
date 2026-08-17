@@ -3,11 +3,13 @@
 namespace App\Filament\Concerns;
 
 use App\Models\AnoLetivo;
+use App\Models\Centro;
 use Closure;
 use Filament\Forms;
 use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Tables;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Botao "Exportar" unico (Excel/PDF agrupados) com um modal previo a
@@ -27,6 +29,12 @@ use Filament\Tables;
  */
 trait TemExportacaoComEstado
 {
+    /**
+     * Papeis da Catequese presos a um so centro — nunca veem o select de
+     * Centro (mesmo criterio de CatequizandoResource::getEloquentQuery()).
+     */
+    private const PAPEIS_CENTRO_CATEQUESE = ['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'];
+
     private static function accaoExportarComEstado(
         array $opcoesEstado,
         string $estadoPorOmissao,
@@ -34,10 +42,16 @@ trait TemExportacaoComEstado
         string $rotaPdf,
         ?Closure $parametrosRota = null,
         bool $comAnoLectivo = false,
+        bool $comCentro = false,
     ): Tables\Actions\ActionGroup {
         $parametros = $parametrosRota ?? fn () => [];
 
-        $campos = function () use ($opcoesEstado, $estadoPorOmissao, $comAnoLectivo) {
+        // Quem ja esta preso a um centro (papeis de centro da Catequese)
+        // nunca escolhe — o centro_id e sempre forcado na rota, ignorando
+        // qualquer valor no pedido (ver rotas em routes/web.php).
+        $mostrarCentro = $comCentro && ! (Auth::user()?->hasRole(self::PAPEIS_CENTRO_CATEQUESE) ?? false);
+
+        $campos = function () use ($opcoesEstado, $estadoPorOmissao, $comAnoLectivo, $mostrarCentro) {
             $campos = [
                 Forms\Components\Select::make('estado')
                     ->label('Estado')
@@ -59,14 +73,24 @@ trait TemExportacaoComEstado
                     ->required();
             }
 
+            if ($mostrarCentro) {
+                $campos[] = Forms\Components\Select::make('centro_id')
+                    ->label('Centro')
+                    ->options(fn () => ['todos' => 'Todos os centros'] + Centro::orderBy('nome')->pluck('nome', 'id')->all())
+                    ->default('todos')
+                    ->native(false)
+                    ->required();
+            }
+
             return $campos;
         };
 
-        $parametrosRotaComDados = function (array $data) use ($parametros, $comAnoLectivo) {
+        $parametrosRotaComDados = function (array $data) use ($parametros, $comAnoLectivo, $mostrarCentro) {
             return [
                 ...$parametros(),
                 'estado' => $data['estado'],
                 ...($comAnoLectivo ? ['ano_letivo' => $data['ano_letivo_id']] : []),
+                ...($mostrarCentro && ($data['centro_id'] ?? 'todos') !== 'todos' ? ['centro_id' => $data['centro_id']] : []),
             ];
         };
 

@@ -22,13 +22,15 @@ Nenhuma tabela própria. Lê de `movimentos`, `fieis`, `fiel_centros`, `centros`
 
 Todos os 4 Services expõem `calcular(int $ano, ?int $centroId = null)` (ou variante equivalente) e filtram sempre por `status_conciliacao = Aprovado` — números "oficiais" nunca incluem pendentes/rejeitados.
 
+**Selector de Centro (2026-08-17, pedido do cliente)**: os 4 relatórios acima não tinham nenhuma forma de restringir a um centro específico — `centroId` era sempre `null` ("Todos") para quem não estava preso a um centro. Ganharam a trait `App\Filament\Concerns\FiltraPorCentro` (`mostrarFiltroCentro()`, `getCentrosDisponiveis()`, `centroIdParaConsulta()`) — mesmo espírito da `FiltraMatrizDizimos` do Módulo 5, mas mais simples: um só `?int $centroId` em vez de um array de centros agregados. `tesoureiro_centro`/`coordenador_centro` continuam sempre presos ao seu; os restantes ganham um `<select>` "Todos os centros" na página. Os widgets de gráfico embutidos (`ArrecadacaoBarChart`/`PieChart`, `DespesasBarChart`/`PieChart`) ganharam uma prop opcional `?int $centroId` para respeitar a escolha feita na página em vez de recalcular sozinhos a partir do papel.
+
 ## 4. RBAC
 
 Cada página controla o acesso via `canAccess()` estático (sem Policy dedicada, por não haver model):
 
 | Página | Papéis com acesso |
 |---|---|
-| `DemonstrativoArrecadacao`, `DemonstrativoDespesas`, `BalancoReceitasDespesas`, `FieisPorSituacao` | `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro`, `consultor` |
+| `DemonstrativoArrecadacao`, `DemonstrativoDespesas`, `BalancoReceitasDespesas`, `FieisPorSituacao` | `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro`, `coordenador_centro`, `consultor` |
 | `RastreabilidadeBancaria`, `AuditoriaRepassesInterCentro` | `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `consultor` (**sem** `tesoureiro_centro` — conciliação/rastreabilidade bancária é exclusiva dos gestores de paróquia) |
 | `MatrizAssiduidadeReport` | mesmo alcance da Matriz de Dízimos interactiva: `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro` |
 | `LogAuditoria` | **só `admin_geral`** |
@@ -39,7 +41,7 @@ As rotas web de exportação (`routes/web.php`, prefixo `/relatorios`) repetem o
 
 Todas em `app/Filament/Pages/Relatorios/`, `navigationGroup: Relatórios`:
 
-- **`DemonstrativoArrecadacao`**, **`DemonstrativoDespesas`**, **`BalancoReceitasDespesas`**, **`FieisPorSituacao`**: consultam os Services acima; `tesoureiro_centro` tem o `centro_id` sempre forçado ao seu próprio (nunca lê da query string).
+- **`DemonstrativoArrecadacao`**, **`DemonstrativoDespesas`**, **`BalancoReceitasDespesas`**, **`FieisPorSituacao`**: consultam os Services acima; `tesoureiro_centro`/`coordenador_centro` têm o `centro_id` sempre forçado ao seu próprio (via `FiltraPorCentro`); os restantes escolhem no `<select>` da página, propagado aos botões de exportação (Excel/PDF) como `?centro_id=`.
 - **`RastreabilidadeBancaria`**: tabela (`InteractsWithTable`) de `Movimento::query()->whereNotNull('banco_id')`, com filtro por banco e `ExportAction` (Excel via `pxlrbt/filament-excel`).
 - **`AuditoriaRepassesInterCentro`**: consulta `FielCentro::withoutGlobalScopes()->whereNotNull('motivo_transferencia')` — só mostra transferências de facto (não o vínculo inicial de um fiel a um centro). Comentário no código explica a decisão: "não há transferência financeira entre centros no schema (cada movimento pertence a 1 só centro) — reaproveita o histórico `fiel_centros`, que é a única movimentação inter-centro real". Coluna `centro_origem` calculada dinamicamente (`centroOrigem()`), procurando a linha anterior do mesmo fiel cujo `data_fim` coincide com o `data_inicio` da linha actual.
 - **`MatrizAssiduidadeReport`**: usa a mesma trait `FiltraMatrizDizimos` e o mesmo `MatrizDizimosService::calcular()` da página interactiva do Módulo 5 — garante que o relatório nunca diverge da matriz ao vivo.
@@ -59,6 +61,8 @@ Todos restringem a `centroId` do `tesoureiro_centro` da mesma forma que o widget
 - **`App\Support\RelatorioPdf`**: wrapper fino sobre `Spatie\LaravelPdf\Facades\Pdf`, configurando o `Browsershot` para usar `/usr/bin/chromium` (definido no `docker/php/Dockerfile`) com `noSandbox()`. Todas as rotas de export PDF passam por `RelatorioPdf::view(...)`.
 - **`App\Exports\ArrayExport`** (`FromArray`, `WithHeadings` do `maatwebsite/excel`): export genérico reutilizado por todos os relatórios cujos dados já vêm agregados/computados em array (não uma query Eloquent tabular directa). **Sanitiza contra CSV/Excel Formula Injection**: qualquer célula string que comece por `=`, `+`, `-`, `@`, tab ou carriage return é prefixada com `'` antes de ir para o ficheiro — protege contra fórmulas maliciosas vindas de dados introduzidos por utilizadores (ex. nome de fiel, motivo de transferência).
 - Rotas de exportação (`routes/web.php`, `relatorios.*`): uma rota `/excel` e uma `/pdf` por relatório, todas sob `Route::middleware('auth')->prefix('relatorios')`. Views Blade em `resources/views/pdfs/relatorios/*` (PDF) — não inspecionadas neste levantamento, mas referenciadas directamente pelas rotas.
+- **Logotipo no cabeçalho dos PDFs (2026-08-17)**: `resources/views/pdfs/layout.blade.php` mostra `$paroquia->logoBase64()` (Módulo 2) ao lado do título, quando existir. **`User::paroquiaParaExportacao(?Centro $centro = null)`** resolve qual paróquia usar — prioridade: paróquia do centro resolvido > paróquia do próprio utilizador > `Paroquia::first()`. Este último fallback existe especificamente para `admin_geral`, que não tem `paroquia_id` (papel global) — sem ele, `'paroquia' => $user->paroquia` resolvia sempre `null` e o cabeçalho nunca mostrava logotipo nenhum para este papel, nem quando havia um configurado (bug reportado pelo cliente: nenhum PDF da Catequese mostrava o logotipo carregado).
+- **`App\Support\ResolveCentroExportacao`**: resolve qual `Centro` usar numa rota de exportação a partir do papel do utilizador e do `?centro_id=` opcional — `centro()` (papéis financeiros presos a centro: `tesoureiro_centro`/`coordenador_centro`) e `centroCatequese()` (papéis da Catequese presos a centro: `coordenador_catequese_centro`/`secretario_catequese`/`tesoureiro_catequese`). Quem está preso a um centro tem-no sempre forçado, ignorando o parâmetro; os restantes podem pedir um centro específico — nunca confia no valor sem o validar (`Centro::find()`, que já aplica a `ParoquiaScope`: um centro de outra paróquia simplesmente não existe na query, cai para `null`/"Todos"). Usado pelas 8 rotas financeiras (Demonstrativo de Arrecadação/Despesas, Balanço, Fiéis por Situação) e pelas 6 da Catequese (Catequizandos, Catequistas, Inscrições).
 
 ## 8. Regras de negócio não óbvias
 

@@ -17,6 +17,7 @@ use App\Services\DemonstrativoDespesasService;
 use App\Services\FieisPorSituacaoService;
 use App\Services\MatrizDizimosService;
 use App\Support\RelatorioPdf;
+use App\Support\ResolveCentroExportacao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -40,7 +41,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/matriz-assiduidade/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro']), 403);
 
         $ano = (int) $request->query('ano', now()->year);
         $centroIds = MatrizDizimosService::centrosPermitidos($user, $request->query('centro_id'));
@@ -66,7 +67,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/matriz-assiduidade/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro']), 403);
 
         $ano = (int) $request->query('ano', now()->year);
         $centroIds = MatrizDizimosService::centrosPermitidos($user, $request->query('centro_id'));
@@ -77,7 +78,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.matriz-assiduidade', [
             'titulo' => 'Matriz de Assiduidade do Dízimo',
-            'paroquia' => $centro?->paroquia ?? $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'centro' => $centro,
             'ano' => $ano,
             'linhas' => MatrizDizimosService::calcular($centroIds, $ano),
@@ -86,11 +87,11 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/demonstrativo-arrecadacao/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
-        $dados = DemonstrativoArrecadacaoService::calcular($ano, $centroId);
+        $dados = DemonstrativoArrecadacaoService::calcular($ano, $centro?->id);
         $meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
         $rows = [];
@@ -112,26 +113,26 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/demonstrativo-arrecadacao/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
 
         return RelatorioPdf::view('pdfs.relatorios.demonstrativo-arrecadacao', [
             'titulo' => 'Demonstrativo Unificado de Receitas (Arrecadação)',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'ano' => $ano,
-            'dados' => DemonstrativoArrecadacaoService::calcular($ano, $centroId),
+            'dados' => DemonstrativoArrecadacaoService::calcular($ano, $centro?->id),
         ])->name('demonstrativo-arrecadacao.pdf');
     })->name('demonstrativo-arrecadacao.pdf');
 
     Route::get('/demonstrativo-despesas/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
-        $dados = DemonstrativoDespesasService::calcular($ano, $centroId);
+        $dados = DemonstrativoDespesasService::calcular($ano, $centro?->id);
         $meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
         $rows = [];
@@ -153,16 +154,16 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/demonstrativo-despesas/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
 
         return RelatorioPdf::view('pdfs.relatorios.demonstrativo-despesas', [
             'titulo' => 'Demonstrativo Unificado de Despesas',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'ano' => $ano,
-            'dados' => DemonstrativoDespesasService::calcular($ano, $centroId),
+            'dados' => DemonstrativoDespesasService::calcular($ano, $centro?->id),
         ])->name('demonstrativo-despesas.pdf');
     })->name('demonstrativo-despesas.pdf');
 
@@ -172,7 +173,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.rastreabilidade-bancaria', [
             'titulo' => 'Rastreabilidade Bancária por Conta',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao(),
             'movimentos' => Movimento::whereNotNull('banco_id')->with(['banco', 'centro'])->get(),
         ])->name('rastreabilidade-bancaria.pdf');
     })->name('rastreabilidade-bancaria.pdf');
@@ -189,18 +190,18 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.repasses-inter-centro', [
             'titulo' => 'Auditoria de Repasses Inter-Centro',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao(),
             'vinculos' => $query->get(),
         ])->name('repasses-inter-centro.pdf');
     })->name('repasses-inter-centro.pdf');
 
     Route::get('/balanco-receitas-despesas/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
-        $dados = BalancoReceitasDespesasService::calcular($ano, $centroId);
+        $dados = BalancoReceitasDespesasService::calcular($ano, $centro?->id);
 
         $rows = [];
         foreach (['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as $i => $mesLabel) {
@@ -216,26 +217,26 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/balanco-receitas-despesas/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
 
         return RelatorioPdf::view('pdfs.relatorios.balanco-receitas-despesas', [
             'titulo' => 'Balanço de Receitas vs Despesas',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'ano' => $ano,
-            'dados' => BalancoReceitasDespesasService::calcular($ano, $centroId),
+            'dados' => BalancoReceitasDespesasService::calcular($ano, $centro?->id),
         ])->name('balanco-receitas-despesas.pdf');
     })->name('balanco-receitas-despesas.pdf');
 
     Route::get('/fieis-por-situacao/excel', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
-        $linhas = FieisPorSituacaoService::calcular($ano, $centroId);
+        $linhas = FieisPorSituacaoService::calcular($ano, $centro?->id);
 
         $rows = collect($linhas)->map(fn ($linha) => [
             'Fiel' => $linha['fiel']->nome,
@@ -251,16 +252,16 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
     Route::get('/fieis-por-situacao/pdf', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
 
-        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centro = ResolveCentroExportacao::centro($user, $request);
         $ano = (int) $request->query('ano', now()->year);
 
         return RelatorioPdf::view('pdfs.relatorios.fieis-por-situacao', [
             'titulo' => 'Relatório de Fiéis por Situação',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'ano' => $ano,
-            'linhas' => FieisPorSituacaoService::calcular($ano, $centroId),
+            'linhas' => FieisPorSituacaoService::calcular($ano, $centro?->id),
         ])->name('fieis-por-situacao.pdf');
     })->name('fieis-por-situacao.pdf');
 
@@ -270,7 +271,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.log-auditoria', [
             'titulo' => 'Log de Auditoria do Sistema',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao(),
             'atividades' => Activity::where('subject_type', Movimento::class)->with('causer')->latest()->get(),
         ])->name('log-auditoria.pdf');
     })->name('log-auditoria.pdf');
@@ -327,7 +328,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.turma-catequizandos', [
             'titulo' => 'Catequizandos da Turma',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($turma->centro),
             'turma' => $turma,
             'sacramentos' => $turma->sacramentos,
             'catequistas' => $turma->catequistas()->wherePivotNull('data_fim')->get(),
@@ -344,11 +345,12 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $estado = $request->query('estado', 'ativo');
         $anoLetivo = $request->query('ano_letivo', 'todos');
+        $centro = ResolveCentroExportacao::centroCatequese($user, $request);
 
         $query = Catequizando::query()->with('centro');
 
-        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
-            $query->where('centro_id', $user->centro_id);
+        if ($centro) {
+            $query->where('centro_id', $centro->id);
         }
 
         if ($estado !== 'todos') {
@@ -383,11 +385,12 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $estado = $request->query('estado', 'ativo');
         $anoLetivo = $request->query('ano_letivo', 'todos');
+        $centro = ResolveCentroExportacao::centroCatequese($user, $request);
 
         $query = Catequizando::query()->with('centro');
 
-        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
-            $query->where('centro_id', $user->centro_id);
+        if ($centro) {
+            $query->where('centro_id', $centro->id);
         }
 
         if ($estado !== 'todos') {
@@ -402,7 +405,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.catequizandos', [
             'titulo' => 'Lista de Catequizandos',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'catequizandos' => $query->orderBy('nome_completo')->get(),
         ])->name("{$nomeFicheiro}.pdf");
     })->name('catequizandos.pdf');
@@ -413,11 +416,12 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $estado = $request->query('estado', 'todos');
         $anoLetivo = $request->query('ano_letivo', 'todos');
+        $centro = ResolveCentroExportacao::centroCatequese($user, $request);
 
         $query = Inscricao::query()->with(['catequizando', 'centro', 'anoLetivo', 'anoCatequetico', 'sacramentos']);
 
-        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
-            $query->where('centro_id', $user->centro_id);
+        if ($centro) {
+            $query->where('centro_id', $centro->id);
         }
 
         if ($estado !== 'todos') {
@@ -454,11 +458,12 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $estado = $request->query('estado', 'todos');
         $anoLetivo = $request->query('ano_letivo', 'todos');
+        $centro = ResolveCentroExportacao::centroCatequese($user, $request);
 
         $query = Inscricao::query()->with(['catequizando', 'centro', 'anoLetivo', 'anoCatequetico', 'sacramentos']);
 
-        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
-            $query->where('centro_id', $user->centro_id);
+        if ($centro) {
+            $query->where('centro_id', $centro->id);
         }
 
         if ($estado !== 'todos') {
@@ -473,7 +478,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.inscricoes', [
             'titulo' => 'Lista de Inscrições',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'inscricoes' => $query->orderBy('data_atendimento', 'desc')->get(),
         ])->name("{$nomeFicheiro}.pdf");
     })->name('inscricoes.pdf');
@@ -484,11 +489,12 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $estado = $request->query('estado', 'ativo');
         $anoLetivo = $request->query('ano_letivo', 'todos');
+        $centro = ResolveCentroExportacao::centroCatequese($user, $request);
 
         $query = Catequista::query()->with('centro');
 
-        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
-            $query->where('centro_id', $user->centro_id);
+        if ($centro) {
+            $query->where('centro_id', $centro->id);
         }
 
         if ($estado !== 'todos') {
@@ -522,11 +528,12 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $estado = $request->query('estado', 'ativo');
         $anoLetivo = $request->query('ano_letivo', 'todos');
+        $centro = ResolveCentroExportacao::centroCatequese($user, $request);
 
         $query = Catequista::query()->with('centro');
 
-        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
-            $query->where('centro_id', $user->centro_id);
+        if ($centro) {
+            $query->where('centro_id', $centro->id);
         }
 
         if ($estado !== 'todos') {
@@ -541,7 +548,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         return RelatorioPdf::view('pdfs.relatorios.catequistas', [
             'titulo' => 'Lista de Catequistas',
-            'paroquia' => $user->paroquia,
+            'paroquia' => $user->paroquiaParaExportacao($centro),
             'catequistas' => $query->orderBy('nome_completo')->get(),
         ])->name("{$nomeFicheiro}.pdf");
     })->name('catequistas.pdf');

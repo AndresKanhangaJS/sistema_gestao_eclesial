@@ -65,6 +65,21 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Paroquia a usar no cabecalho de um PDF exportado (nome + logotipo,
+     * ver Paroquia::logoBase64()). admin_geral nao tem paroquia_id (papel
+     * global) — sem este fallback, o cabecalho ficava sempre sem logotipo
+     * para o unico papel que exporta tudo. Prioridade: a paroquia do centro
+     * escolhido no relatorio (se algum foi resolvido) > a propria paroquia >
+     * a primeira paroquia do sistema (unico fallback plausivel para um
+     * papel global a exportar "todos os centros" sem nenhum paroquia_id
+     * proprio).
+     */
+    public function paroquiaParaExportacao(?Centro $centro = null): ?Paroquia
+    {
+        return $centro?->paroquia ?? $this->paroquia ?? Paroquia::query()->orderBy('id')->first();
+    }
+
+    /**
      * Sem esta implementacao, Filament\Http\Middleware\Authenticate cai no
      * fallback "config('app.env') !== 'local'" — ou seja, fora do ambiente
      * local (testing, production) TODOS os utilizadores, incluindo

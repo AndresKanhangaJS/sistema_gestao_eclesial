@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Relatorios;
 
+use App\Filament\Concerns\FiltraPorCentro;
 use App\Services\DemonstrativoDespesasService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
@@ -9,6 +10,8 @@ use Livewire\Attributes\Computed;
 
 class DemonstrativoDespesas extends Page
 {
+    use FiltraPorCentro;
+
     protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
 
     protected static ?string $navigationGroup = 'Relatórios';
@@ -29,6 +32,7 @@ class DemonstrativoDespesas extends Page
     public function mount(): void
     {
         $this->ano = (int) now()->year;
+        $this->inicializarFiltroCentro();
     }
 
     public function getAnosDisponiveis(): array
@@ -41,9 +45,6 @@ class DemonstrativoDespesas extends Page
     #[Computed]
     public function dados(): array
     {
-        $user = Auth::user();
-        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
-
-        return DemonstrativoDespesasService::calcular($this->ano, $centroId);
+        return DemonstrativoDespesasService::calcular($this->ano, $this->centroIdParaConsulta());
     }
 }

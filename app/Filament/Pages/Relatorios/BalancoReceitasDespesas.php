@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Relatorios;
 
+use App\Filament\Concerns\FiltraPorCentro;
 use App\Services\BalancoReceitasDespesasService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
@@ -9,6 +10,8 @@ use Livewire\Attributes\Computed;
 
 class BalancoReceitasDespesas extends Page
 {
+    use FiltraPorCentro;
+
     protected static ?string $navigationIcon = 'heroicon-o-scale';
 
     protected static ?string $navigationGroup = 'Relatórios';
@@ -29,6 +32,7 @@ class BalancoReceitasDespesas extends Page
     public function mount(): void
     {
         $this->ano = (int) now()->year;
+        $this->inicializarFiltroCentro();
     }
 
     public function getAnosDisponiveis(): array
@@ -41,9 +45,6 @@ class BalancoReceitasDespesas extends Page
     #[Computed]
     public function dados(): array
     {
-        $user = Auth::user();
-        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
-
-        return BalancoReceitasDespesasService::calcular($this->ano, $centroId);
+        return BalancoReceitasDespesasService::calcular($this->ano, $this->centroIdParaConsulta());
     }
 }

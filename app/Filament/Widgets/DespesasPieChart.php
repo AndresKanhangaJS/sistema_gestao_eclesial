@@ -18,6 +18,9 @@ class DespesasPieChart extends ChartWidget
 
     public ?int $ano = null;
 
+    // Ver ArrecadacaoBarChart::$centroId.
+    public ?int $centroId = null;
+
     /** @see EstatisticasGeraisWidget::canView() */
     public static function canView(): bool
     {
@@ -31,7 +34,7 @@ class DespesasPieChart extends ChartWidget
     {
         $ano = $this->ano ?? now()->year;
         $user = Auth::user();
-        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
+        $centroId = $this->centroId ?? ($user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null);
 
         $dados = DemonstrativoDespesasService::calcular($ano, $centroId);
 

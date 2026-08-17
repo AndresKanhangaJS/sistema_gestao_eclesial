@@ -297,6 +297,7 @@ class CatequizandoResource extends Resource
                     rotaExcel: 'relatorios.catequizandos.excel',
                     rotaPdf: 'relatorios.catequizandos.pdf',
                     comAnoLectivo: true,
+                    comCentro: true,
                 ),
             ])
             ->actions([

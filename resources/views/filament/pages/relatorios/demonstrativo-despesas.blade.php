@@ -9,11 +9,23 @@
                 </select>
             </x-filament::input.wrapper>
         </div>
+        @if ($this->mostrarFiltroCentro())
+            <div class="w-56">
+                <x-filament::input.wrapper>
+                    <select wire:model.live="centroId" class="fi-select-input block w-full">
+                        <option value="">Todos os centros</option>
+                        @foreach ($this->getCentrosDisponiveis() as $id => $nome)
+                            <option value="{{ $id }}">{{ $nome }}</option>
+                        @endforeach
+                    </select>
+                </x-filament::input.wrapper>
+            </div>
+        @endif
         <div class="flex gap-2">
-            <x-filament::button tag="a" href="{{ route('relatorios.demonstrativo-despesas.excel', ['ano' => $ano]) }}" icon="heroicon-o-table-cells">
+            <x-filament::button tag="a" href="{{ route('relatorios.demonstrativo-despesas.excel', ['ano' => $ano, 'centro_id' => $centroId]) }}" icon="heroicon-o-table-cells">
                 Exportar Excel
             </x-filament::button>
-            <x-filament::button tag="a" href="{{ route('relatorios.demonstrativo-despesas.pdf', ['ano' => $ano]) }}" color="gray" icon="heroicon-o-document-arrow-down">
+            <x-filament::button tag="a" href="{{ route('relatorios.demonstrativo-despesas.pdf', ['ano' => $ano, 'centro_id' => $centroId]) }}" color="gray" icon="heroicon-o-document-arrow-down">
                 Baixar PDF
             </x-filament::button>
         </div>
@@ -25,8 +37,8 @@
     conteúdo em largura (várias séries, 12 meses) do que o de pizza, e ficavam
     desproporcionados um ao lado do outro. --}}
     <div class="fi-wi grid grid-cols-1 gap-6">
-        @livewire(\App\Filament\Widgets\DespesasBarChart::class, ['ano' => $ano], key('despesas-bar-chart-' . $ano))
-        @livewire(\App\Filament\Widgets\DespesasPieChart::class, ['ano' => $ano], key('despesas-pie-chart-' . $ano))
+        @livewire(\App\Filament\Widgets\DespesasBarChart::class, ['ano' => $ano, 'centroId' => $this->centroIdParaConsulta()], key('despesas-bar-chart-' . $ano . '-' . $centroId))
+        @livewire(\App\Filament\Widgets\DespesasPieChart::class, ['ano' => $ano, 'centroId' => $this->centroIdParaConsulta()], key('despesas-pie-chart-' . $ano . '-' . $centroId))
     </div>
 
     <div class="mt-4 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">

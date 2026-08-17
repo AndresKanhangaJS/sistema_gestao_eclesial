@@ -327,6 +327,12 @@ Quatro pedidos do utilizador depois de testar o fluxo de exportação:
 
 Pedido do utilizador: além do Estado, filtrar também por Ano Lectivo nos locais onde fizer sentido — o trabalho do módulo é sempre organizado por ano lectivo. `accaoExportarComEstado()` ganhou o parâmetro opcional `comAnoLectivo: true`, que acrescenta um segundo `Select` ("Ano Lectivo", opções "Todos" + `AnoLetivo` da paróquia, por omissão o ano `em_curso`) ao mesmo modal `sm`, e passa `?ano_letivo=` na rota gerada.
 
+### 19.3 Selector de Centro nas exportações (2026-08-17)
+
+Pedido do utilizador: quem não está preso a um centro (`admin_geral`, `coordenador_catequese_paroquia`) deve poder escolher um centro específico ou "Todos" ao exportar — antes, essas 3 listas (Catequizandos, Catequistas, Inscrições) nunca tinham selector nenhum, o `centro_id` só era forçado para quem já estava preso a um. `accaoExportarComEstado()` ganhou o parâmetro opcional `comCentro: true`, que acrescenta um terceiro `Select` ("Centro", opções "Todos os centros" + `Centro` da paróquia, por omissão "Todos") ao mesmo modal `sm` — escondido para os papéis presos a um centro (`coordenador_catequese_centro`, `secretario_catequese`, `tesoureiro_catequese`, constante `PAPEIS_CENTRO_CATEQUESE` na trait), que nunca o veem. Activo nos mesmos 3 locais do Ano Lectivo (não em Catequizandos de uma Turma, pela mesma razão — a turma já pertence a um único centro).
+
+As 3 rotas correspondentes (`routes/web.php`) passaram a resolver o centro via **`App\Support\ResolveCentroExportacao::centroCatequese()`** (partilhada com o Módulo 7) em vez do `hasRole([...]) ? $user->centro_id : null` inline de antes — mesmo critério de sempre (papéis presos a centro forçados, ignorando o parâmetro; os restantes usam `?centro_id=` se válido) mas agora também aceitam a escolha explícita. A mesma função resolve ainda a paróquia do cabeçalho do PDF (`$user->paroquiaParaExportacao($centro)`, Módulo 7) — corrige de caminho um bug relacionado reportado pelo cliente: nenhum PDF da Catequese mostrava o logotipo da paróquia carregado (Módulo 2), porque `admin_geral` não tem `paroquia_id` próprio.
+
 Activo em 3 dos 4 locais — o quarto (Catequizandos de uma Turma) não se aplica, porque a turma já pertence a um único `ano_letivo_id`, filtrar de novo seria redundante:
 
 | Lista | Como filtra por ano lectivo | Porquê essa forma |

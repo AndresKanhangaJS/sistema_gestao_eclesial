@@ -168,6 +168,7 @@ class CatequistaResource extends Resource
                     rotaExcel: 'relatorios.catequistas.excel',
                     rotaPdf: 'relatorios.catequistas.pdf',
                     comAnoLectivo: true,
+                    comCentro: true,
                 ),
             ])
             ->actions([

@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 
 class ParoquiaResource extends Resource
 {
@@ -46,6 +47,20 @@ class ParoquiaResource extends Resource
                                     ])
                                     ->required()
                                     ->default('ativo'),
+                                // Reaproveitado no cabecalho dos PDFs exportados
+                                // (Paroquia::logoBase64(), pdfs/layout.blade.php).
+                                Forms\Components\FileUpload::make('logo_path')
+                                    ->label('Logotipo')
+                                    ->image()
+                                    ->imageEditor()
+                                    ->disk(config('filesystems.default'))
+                                    ->directory('logos-paroquia')
+                                    ->getUploadedFileNameForStorageUsing(
+                                        fn ($file) => Str::uuid().'.'.$file->getClientOriginalExtension()
+                                    )
+                                    ->maxSize(2048)
+                                    ->helperText('Aparece nos PDFs exportados. Tamanho máximo: 2MB.')
+                                    ->columnSpanFull(),
                             ]),
                         Forms\Components\Tabs\Tab::make('Contacto')
                             ->schema([
@@ -74,6 +89,10 @@ class ParoquiaResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('logo_path')
+                    ->label('Logotipo')
+                    ->disk(config('filesystems.default'))
+                    ->circular(),
                 Tables\Columns\TextColumn::make('nome')
                     ->searchable()
                     ->sortable(),
