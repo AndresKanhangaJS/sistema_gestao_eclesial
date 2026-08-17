@@ -6,7 +6,9 @@
 
 Login no painel Filament (`/admin`) e controlo de acesso baseado em papéis (RBAC), usando `spatie/laravel-permission` (Roles/Permissions) por baixo do Filament Shield. Define quem pode entrar no sistema, com que papel, e serve de base a todas as Policies dos restantes módulos. Usado por todos os utilizadores do sistema — desde `admin_geral` até aos papéis de centro.
 
-Existem hoje **9 papéis**: os 5 papéis financeiros descritos no `CLAUDE.md` (`admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro`, `consultor`) e mais 4 papéis do módulo Catequese (`coordenador_catequese_paroquia`, `coordenador_catequese_centro`, `secretario_catequese`, `tesoureiro_catequese` — ver `docs/modulos/catequese.md`). Os dois grupos são independentes: nenhum herda acesso do outro.
+Existem hoje **11 papéis**: os 7 papéis financeiros descritos no `CLAUDE.md` (`admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro`, `coordenador_centro`, `secretario_centro`, `consultor`) e mais 4 papéis do módulo Catequese (`coordenador_catequese_paroquia`, `coordenador_catequese_centro`, `secretario_catequese`, `tesoureiro_catequese` — ver `docs/modulos/catequese.md`). Os dois grupos são independentes: nenhum herda acesso do outro.
+
+`coordenador_centro` e `secretario_centro` (2026-08-17) preenchem uma lacuna do `tesoureiro_centro` original: este nunca geria Fiéis (só lançava Movimentos). `coordenador_centro` acumula os dois — mesmo alcance financeiro do `tesoureiro_centro` (sem conciliação) **mais** CRUD completo de Fiéis do seu centro (`FielPolicy`, Módulo 3); `secretario_centro` só tem o CRUD de Fiéis, sem nenhum acesso a Movimentos/relatórios/widgets financeiros (`MovimentoPolicy` exclui-o por completo).
 
 ## 2. Tabelas de base de dados
 
@@ -38,7 +40,7 @@ Tabelas padrão do scaffolding de autenticação do Laravel, sem alterações.
 ## 4. RBAC
 
 ### Controlo de acesso ao painel
-`User::canAccessPanel()` exige `status === 'ativo'` **e** um dos 9 papéis (ver secção 1). Sem isto, `Filament\Http\Middleware\Authenticate` cairia no fallback de bloquear qualquer acesso fora do ambiente `local`.
+`User::canAccessPanel()` exige `status === 'ativo'` **e** um dos 11 papéis (ver secção 1). Sem isto, `Filament\Http\Middleware\Authenticate` cairia no fallback de bloquear qualquer acesso fora do ambiente `local`.
 
 ### Login de contas inactivas
 `App\Filament\Pages\Auth\Login` sobrepõe `getCredentialsFromFormData()` para injectar `'status' => 'ativo'` nas credenciais verificadas por `Auth::attempt()` — uma conta inactiva falha logo na autenticação, com a mensagem genérica de "credenciais inválidas" (não revela se a conta existe). `canAccessPanel()` é o reforço para sessões já autenticadas quando a conta é desactivada a meio da sessão.
@@ -55,7 +57,7 @@ Autoriza CRUD sobre `Role` (ecrã `/admin/shield/roles`) via permissions `view_r
 
 ### `UserPolicy`
 - `viewAny`/`create`: só `administrador_paroquial` (além de `admin_geral`, via `Gate::before`).
-- `view`/`update`: `administrador_paroquial` só sobre utilizadores da própria paróquia **e** com papel `tesoureiro_paroquial` ou `tesoureiro_centro` (constante `PAPEIS_GERIVEIS`) — nunca `admin_geral`, `consultor` ou outro `administrador_paroquial`.
+- `view`/`update`: `administrador_paroquial` só sobre utilizadores da própria paróquia **e** com papel `tesoureiro_paroquial`, `tesoureiro_centro`, `coordenador_centro` ou `secretario_centro` (constante `PAPEIS_GERIVEIS`, mais os 2 papéis de catequese que já lá estavam) — nunca `admin_geral`, `consultor` ou outro `administrador_paroquial`.
 - `delete`/`deleteAny`/`restore`/`forceDelete`: sempre `false` para todos. Motivo documentado no código: `movimentos.usuario_id` é `restrictOnDelete`, e como `users` não tem soft delete, um `forceDelete` quebraria essa FK.
 
 ### `ForcaParoquiaUtilizadorObserver`
@@ -64,7 +66,7 @@ Observer `saving()` que ignora o `paroquia_id` submetido no formulário e força
 ## 5. Filament
 
 - **`UserResource`** (`navigationGroup: Acessos`):
-  - `papeisAtribuiveis()`: `admin_geral` escolhe entre os 5 papéis financeiros; qualquer outro utilizador (na prática, `administrador_paroquial`) só pode atribuir `tesoureiro_paroquial`/`tesoureiro_centro`.
+  - `papeisAtribuiveis()`: `admin_geral` escolhe entre todos os papéis; `administrador_paroquial` só pode atribuir `tesoureiro_paroquial`/`tesoureiro_centro`/`coordenador_centro`/`secretario_centro` (financeiro) e `coordenador_catequese_paroquia`/`secretario_catequese` (catequese).
   - `papelPermitido(string $role)`: valida server-side o papel submetido contra `papeisAtribuiveis()`, `abort`(403) se não permitido — defesa contra adulteração do `Select` no cliente, no mesmo espírito do Observer.
   - Formulário em 2 tabs (Dados de Acesso / Atribuição); campo `password` usa `dehydrated(fn (?string $state) => filled($state))` porque o model já faz cast `'hashed'` (evita cifrar duas vezes).
   - `getEloquentQuery()`: filtra por `paroquia_id` do utilizador quando `administrador_paroquial` — **não** usa `ParoquiaScope` no model `User` (para não afectar outros pontos do sistema que consultam `User`, ex. login, comando de notificações); o isolamento é feito só nesta Resource.
@@ -73,7 +75,7 @@ Observer `saving()` que ignora o `paroquia_id` submetido no formulário e força
 
 ## 6. Seeders
 
-- **`RoleSeeder`**: `Role::firstOrCreate()` para os 9 papéis (idempotente).
+- **`RoleSeeder`**: `Role::firstOrCreate()` para os 11 papéis (idempotente).
 - **`PermissionSeeder`**: corre `shield:generate --option=permissions` (nunca `policies_and_permissions`, para nunca sobrescrever ficheiros de Policy), cria 2 permissions customizadas (`aprovar_movimento`, `rejeitar_movimento` — abilities que não são CRUD standard), e faz `syncPermissions()` por papel, espelhando exactamente o que cada Policy já concede. O comentário no código é explícito: **isto não substitui as Policies** — a autorização real continua a ser feita por elas; o seeder só preenche a tabela de permissions para o ecrã de gestão de Roles do Shield ficar coerente.
 - Papéis da Catequese ainda **não** têm permissions atribuídas pelo `PermissionSeeder` (nota registada em `docs/modulos/catequese.md`, secção 9).
 

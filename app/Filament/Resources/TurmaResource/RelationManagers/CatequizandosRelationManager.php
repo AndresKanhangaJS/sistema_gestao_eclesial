@@ -5,10 +5,12 @@ namespace App\Filament\Resources\TurmaResource\RelationManagers;
 use App\Enums\EstadoInscricao;
 use App\Enums\EstadoInscricaoTurma;
 use App\Enums\TipoInscricao;
+use App\Filament\Concerns\TemExportacaoComEstado;
 use App\Models\Catequizando;
 use App\Models\Inscricao;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,6 +28,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class CatequizandosRelationManager extends RelationManager
 {
+    use TemExportacaoComEstado;
+
     protected static string $relationship = 'inscricoes';
 
     // Inscricao::turmas() e o inverso real (BelongsToMany, ver Inscricao model).
@@ -87,11 +91,7 @@ class CatequizandosRelationManager extends RelationManager
                     ->placeholder('—'),
                 Tables\Columns\BadgeColumn::make('pivot.status')
                     ->label('Estado')
-                    ->formatStateUsing(fn (EstadoInscricaoTurma $state) => match ($state) {
-                        EstadoInscricaoTurma::Ativo => 'Activo',
-                        EstadoInscricaoTurma::Transferido => 'Transferido',
-                        EstadoInscricaoTurma::Removido => 'Removido',
-                    })
+                    ->formatStateUsing(fn (EstadoInscricaoTurma $state) => $state->label())
                     ->colors([
                         'success' => EstadoInscricaoTurma::Ativo->value,
                         'gray' => EstadoInscricaoTurma::Transferido->value,
@@ -121,11 +121,18 @@ class CatequizandosRelationManager extends RelationManager
                     ->icon('heroicon-o-plus')
                     ->visible(fn () => self::podeGerir())
                     ->disabled(fn () => $this->getOwnerRecord()->vagas_bloqueadas)
-                    ->tooltip(fn () => $this->getOwnerRecord()->vagas_bloqueadas ? 'Vagas bloqueadas — desbloqueie ou aumente o limite primeiro.' : null)
+                    ->tooltip(fn () => $this->getOwnerRecord()->vagas_bloqueadas ? 'Vagas bloqueadas: desbloqueie ou aumente o limite primeiro.' : null)
                     ->form(function () {
                         $turma = $this->getOwnerRecord();
 
-                        $idsJaAtivos = $turma->inscricoes()->wherePivot('status', EstadoInscricaoTurma::Ativo->value)
+                        // Exclui quem ja esta activo nesta OU noutra turma do mesmo ano
+                        // lectivo — "Adicionar Catequizando" e so para colocacoes novas;
+                        // mover alguem de turma continua a ser feito por "Trocar de
+                        // Turma" (InscricaoTurmaRelationManager), nunca em silencio
+                        // a partir daqui.
+                        $idsAtivosEmQualquerTurma = Inscricao::withoutGlobalScopes()
+                            ->where('ano_letivo_id', $turma->ano_letivo_id)
+                            ->whereHas('turmaAtiva')
                             ->pluck('catequizando_id')->all();
 
                         $turmaSacramentoIds = $turma->sacramentos()->pluck('sacramentos.id')->sort()->values()->all();
@@ -154,17 +161,18 @@ class CatequizandosRelationManager extends RelationManager
                             ->pluck('catequizando_id')->all();
 
                         return [
-                            Forms\Components\Select::make('catequizando_id')
-                                ->label('Catequizando')
+                            Forms\Components\Select::make('catequizando_ids')
+                                ->label('Catequizandos')
+                                ->multiple()
                                 ->options(
                                     fn () => Catequizando::withoutGlobalScopes()
                                         ->where('centro_id', $turma->centro_id)
-                                        ->whereNotIn('id', array_merge($idsJaAtivos, $idsIncompativeis))
+                                        ->whereNotIn('id', array_merge($idsAtivosEmQualquerTurma, $idsIncompativeis))
                                         ->pluck('nome_completo', 'id')
                                 )
                                 ->searchable()
                                 ->required()
-                                ->helperText('Só mostra catequizandos sem inscrição incompatível — mesmo ano catequético e sacramento(s) desta turma.'),
+                                ->helperText('Pode escolher vários de uma vez. Só mostra catequizandos sem colocação activa noutra turma e sem inscrição incompatível (mesmo ano catequético e sacramento(s) desta turma).'),
                             Forms\Components\DatePicker::make('data_movimento')
                                 ->label('Data')
                                 ->required()
@@ -175,51 +183,62 @@ class CatequizandosRelationManager extends RelationManager
                     })
                     ->action(function (array $data): void {
                         $turma = $this->getOwnerRecord();
+                        $ignorados = [];
 
-                        $inscricao = Inscricao::withoutGlobalScopes()
-                            ->where('catequizando_id', $data['catequizando_id'])
-                            ->where('ano_letivo_id', $turma->ano_letivo_id)
-                            ->where('estado', '!=', EstadoInscricao::Cancelado->value)
-                            ->first();
+                        foreach ($data['catequizando_ids'] as $catequizandoId) {
+                            $inscricao = Inscricao::withoutGlobalScopes()
+                                ->where('catequizando_id', $catequizandoId)
+                                ->where('ano_letivo_id', $turma->ano_letivo_id)
+                                ->where('estado', '!=', EstadoInscricao::Cancelado->value)
+                                ->first();
 
-                        if (! $inscricao) {
-                            // Sem ficha ainda para este ano lectivo — cria-se uma nova,
-                            // seguindo o ano catequetico/sacramentos da propria turma
-                            // (é para essa turma que o catequizando está a ser colocado).
-                            $inscricao = Inscricao::create([
-                                'paroquia_id' => $turma->paroquia_id,
-                                'centro_id' => $turma->centro_id,
-                                'catequizando_id' => $data['catequizando_id'],
-                                'ano_letivo_id' => $turma->ano_letivo_id,
-                                'ano_catequetico_id' => $turma->ano_catequetico_id,
-                                'tipo' => TipoInscricao::Nova->value,
-                                'data_atendimento' => $data['data_movimento'],
-                                'estado' => EstadoInscricao::Inscrito->value,
-                                'observacoes' => $data['motivo'] ?? null,
-                            ]);
+                            if (! $inscricao) {
+                                // Sem ficha ainda para este ano lectivo — cria-se uma nova,
+                                // seguindo o ano catequetico/sacramentos da propria turma
+                                // (é para essa turma que o catequizando está a ser colocado).
+                                $inscricao = Inscricao::create([
+                                    'paroquia_id' => $turma->paroquia_id,
+                                    'centro_id' => $turma->centro_id,
+                                    'catequizando_id' => $catequizandoId,
+                                    'ano_letivo_id' => $turma->ano_letivo_id,
+                                    'ano_catequetico_id' => $turma->ano_catequetico_id,
+                                    'tipo' => TipoInscricao::Nova->value,
+                                    'data_atendimento' => $data['data_movimento'],
+                                    'estado' => EstadoInscricao::Inscrito->value,
+                                    'observacoes' => $data['motivo'] ?? null,
+                                ]);
 
-                            $inscricao->sacramentos()->sync($turma->sacramentos()->pluck('sacramentos.id'));
-                        }
+                                $inscricao->sacramentos()->sync($turma->sacramentos()->pluck('sacramentos.id'));
+                            }
 
-                        $activa = $inscricao->turmaAtiva;
+                            $activa = $inscricao->turmaAtiva;
 
-                        if ($activa && $activa->turma_id === $turma->id) {
-                            return;
-                        }
+                            if ($activa) {
+                                // O formulario ja exclui quem esta activo noutra turma das
+                                // opcoes — isto e so defesa contra uma colocacao entretanto
+                                // feita por outra pessoa enquanto este formulario estava
+                                // aberto. Nunca transfere em silencio.
+                                if ($activa->turma_id !== $turma->id) {
+                                    $ignorados[] = "{$inscricao->catequizando->nome_completo} (já activo em \"{$activa->turma->descricaoCurta()}\")";
+                                }
 
-                        if ($activa) {
-                            $activa->update([
-                                'status' => EstadoInscricaoTurma::Transferido->value,
-                                'data_fim' => $data['data_movimento'],
+                                continue;
+                            }
+
+                            $inscricao->turmas()->attach($turma->id, [
+                                'status' => EstadoInscricaoTurma::Ativo->value,
+                                'data_inicio' => $data['data_movimento'],
                                 'motivo' => $data['motivo'] ?? null,
                             ]);
                         }
 
-                        $inscricao->turmas()->attach($turma->id, [
-                            'status' => EstadoInscricaoTurma::Ativo->value,
-                            'data_inicio' => $data['data_movimento'],
-                            'motivo' => $data['motivo'] ?? null,
-                        ]);
+                        if ($ignorados !== []) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Alguns catequizandos não foram adicionados')
+                                ->body(implode('; ', $ignorados))
+                                ->send();
+                        }
                     }),
                 // Bloqueio manual, nunca automatico (pedido explicito do utilizador,
                 // docs/modulos/catequese.md secc. 14) — atingir vagas_maximo so
@@ -251,6 +270,21 @@ class CatequizandosRelationManager extends RelationManager
                             ->minValue(fn () => $this->getOwnerRecord()->vagasOcupadas()),
                     ])
                     ->action(fn (array $data) => $this->getOwnerRecord()->update(['vagas_maximo' => $data['vagas_maximo']])),
+                self::accaoExportarComEstado(
+                    opcoesEstado: [
+                        'todos' => 'Todos',
+                        EstadoInscricaoTurma::Ativo->value => 'Activo',
+                        EstadoInscricaoTurma::Transferido->value => 'Transferido',
+                        EstadoInscricaoTurma::Removido->value => 'Removido',
+                    ],
+                    estadoPorOmissao: EstadoInscricaoTurma::Ativo->value,
+                    rotaExcel: 'relatorios.turma-catequizandos.excel',
+                    rotaPdf: 'relatorios.turma-catequizandos.pdf',
+                    // O model completo, nao ->id: o route() so troca por
+                    // hashid (TemIdMascarado::getHashidAttribute()) quando
+                    // recebe a instancia, nunca a partir de um escalar solto.
+                    parametrosRota: fn () => ['turma' => $this->getOwnerRecord()],
+                ),
             ])
             ->actions([
                 Tables\Actions\Action::make('removerDaTurma')
@@ -279,7 +313,7 @@ class CatequizandosRelationManager extends RelationManager
                     ->color('success')
                     ->visible(fn ($record) => self::podeGerir() && $record->pivot->status === EstadoInscricaoTurma::Removido)
                     ->disabled(fn () => $this->getOwnerRecord()->vagas_bloqueadas)
-                    ->tooltip(fn () => $this->getOwnerRecord()->vagas_bloqueadas ? 'Vagas bloqueadas — desbloqueie ou aumente o limite primeiro.' : null)
+                    ->tooltip(fn () => $this->getOwnerRecord()->vagas_bloqueadas ? 'Vagas bloqueadas: desbloqueie ou aumente o limite primeiro.' : null)
                     ->requiresConfirmation()
                     ->form([
                         Forms\Components\DatePicker::make('data_movimento')
@@ -293,12 +327,17 @@ class CatequizandosRelationManager extends RelationManager
                         $turma = $this->getOwnerRecord();
                         $activaNoutraTurma = $record->turmaAtiva;
 
+                        // Nunca transferir em silencio: se entretanto ficou activo
+                        // noutra turma, bloqueia e informa qual, para o utilizador
+                        // remover de la primeiro se for mesmo essa a intencao.
                         if ($activaNoutraTurma && $activaNoutraTurma->turma_id !== $turma->id) {
-                            $activaNoutraTurma->update([
-                                'status' => EstadoInscricaoTurma::Transferido->value,
-                                'data_fim' => $data['data_movimento'],
-                                'motivo' => $data['motivo'] ?? 'Reactivação nesta turma.',
-                            ]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Não é possível reactivar')
+                                ->body("Este catequizando já está activo na turma \"{$activaNoutraTurma->turma->descricaoCurta()}\". Remova-o de lá primeiro.")
+                                ->send();
+
+                            return;
                         }
 
                         $record->turmas()->attach($turma->id, [

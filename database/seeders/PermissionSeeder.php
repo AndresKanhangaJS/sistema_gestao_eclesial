@@ -10,18 +10,22 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Gera as permissions do Filament Shield (uma por Resource/Page/Widget) e
- * associa-as aos 5 roles do CLAUDE.md, espelhando exactamente o que cada
+ * associa-as aos roles do CLAUDE.md, espelhando exactamente o que cada
  * Policy ja concede (ParoquiaPolicy, CentroPolicy, FielPolicy, BancoPolicy,
- * MovimentoPolicy, CategoriaDespesaPolicy, UserPolicy).
+ * MovimentoPolicy, CategoriaDespesaPolicy, CategoriaReceitaPolicy, UserPolicy).
  *
  * Hierarquia (reconciliada com o CLAUDE.md):
  * - admin_geral: acesso total — CRUD de Paroquias e regista qualquer papel,
  *   incl. administrador_paroquial.
  * - administrador_paroquial: tudo o que o tesoureiro_paroquial faz (financeiro
  *   completo + conciliacao) MAIS gestao de utilizadores da propria paroquia
- *   (regista tesoureiro_paroquial/tesoureiro_centro e vincula-os a centros).
+ *   (regista tesoureiro_paroquial/tesoureiro_centro/coordenador_centro/
+ *   secretario_centro e vincula-os a centros).
  * - tesoureiro_paroquial: financeiro completo + conciliacao bancaria.
- * - tesoureiro_centro: apenas o seu centro, sem conciliacao nem gestao de utilizadores.
+ * - tesoureiro_centro: apenas o seu centro, sem conciliacao nem gestao de Fieis.
+ * - coordenador_centro: mesmo alcance financeiro do tesoureiro_centro MAIS
+ *   CRUD completo de Fieis do proprio centro.
+ * - secretario_centro: so CRUD de Fieis do proprio centro, sem financeiro.
  * - consultor: so leitura, global.
  *
  * IMPORTANTE: isto NAO substitui as Policies - a autorizacao real continua a
@@ -71,6 +75,7 @@ class PermissionSeeder extends Seeder
             'view_fiel', 'view_any_fiel',
             'view_movimento', 'view_any_movimento',
             'view_categoria::despesa', 'view_any_categoria::despesa',
+            'view_categoria::receita', 'view_any_categoria::receita',
             'view_banco', 'view_any_banco',
             'view_role', 'view_any_role',
             'page_DemonstrativoArrecadacao',
@@ -93,6 +98,9 @@ class PermissionSeeder extends Seeder
             'view_categoria::despesa', 'view_any_categoria::despesa',
             'create_categoria::despesa', 'update_categoria::despesa',
             'delete_categoria::despesa', 'delete_any_categoria::despesa',
+            'view_categoria::receita', 'view_any_categoria::receita',
+            'create_categoria::receita', 'update_categoria::receita',
+            'delete_categoria::receita', 'delete_any_categoria::receita',
             'view_banco', 'view_any_banco', 'create_banco', 'update_banco',
             'delete_banco', 'delete_any_banco',
             'view_user', 'view_any_user', 'create_user', 'update_user',
@@ -112,6 +120,10 @@ class PermissionSeeder extends Seeder
             'view_categoria::despesa', 'view_any_categoria::despesa',
             'create_categoria::despesa', 'update_categoria::despesa',
             'delete_categoria::despesa', 'delete_any_categoria::despesa',
+            // CategoriaReceita: mesma logica da CategoriaDespesaPolicy, espelhada.
+            'view_categoria::receita', 'view_any_categoria::receita',
+            'create_categoria::receita', 'update_categoria::receita',
+            'delete_categoria::receita', 'delete_any_categoria::receita',
             // Banco: BancoPolicy permite tudo excepto restore/forceDelete.
             'view_banco', 'view_any_banco', 'create_banco', 'update_banco',
             'delete_banco', 'delete_any_banco',
@@ -131,6 +143,28 @@ class PermissionSeeder extends Seeder
             'page_DemonstrativoArrecadacao', 'page_BalancoReceitasDespesas',
             'page_FieisPorSituacao',
             'widget_ArrecadacaoBarChart', 'widget_ArrecadacaoPieChart', 'widget_EstatisticasGeraisWidget',
+        ]);
+
+        // coordenador_centro: mesmo alcance financeiro do tesoureiro_centro
+        // (sem conciliacao) mais gestao completa de Fieis do proprio centro
+        // (FielPolicy::GESTORES_CENTRO), que o tesoureiro_centro nunca teve.
+        $this->assignPermissions('coordenador_centro', [
+            'view_centro', 'view_any_centro',
+            'view_fiel', 'view_any_fiel', 'create_fiel', 'update_fiel',
+            'delete_fiel', 'delete_any_fiel', 'restore_fiel',
+            'view_movimento', 'view_any_movimento', 'create_movimento', 'update_movimento',
+            'page_MatrizDizimos', 'page_MatrizAssiduidadeReport',
+            'page_DemonstrativoArrecadacao', 'page_BalancoReceitasDespesas',
+            'page_FieisPorSituacao',
+            'widget_ArrecadacaoBarChart', 'widget_ArrecadacaoPieChart', 'widget_EstatisticasGeraisWidget',
+        ]);
+
+        // secretario_centro: so gestao de Fieis do proprio centro — nenhum
+        // acesso a Movimentos/relatorios/widgets financeiros.
+        $this->assignPermissions('secretario_centro', [
+            'view_centro', 'view_any_centro',
+            'view_fiel', 'view_any_fiel', 'create_fiel', 'update_fiel',
+            'delete_fiel', 'delete_any_fiel', 'restore_fiel',
         ]);
     }
 

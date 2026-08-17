@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TemIdMascarado;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Sacramento extends Model
 {
     use HasFactory;
+    use TemIdMascarado;
 
     protected $fillable = [
         'ordem',

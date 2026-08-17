@@ -8,6 +8,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Actions\AttachAction;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -66,6 +67,7 @@ class CatequistasRelationManager extends RelationManager
             ->headerActions([
                 AttachAction::make()
                     ->visible(fn () => self::podeGerir())
+                    ->recordSelectOptionsQuery(fn (Builder $query) => $query->where('centro_id', $this->getOwnerRecord()->centro_id))
                     ->form(fn (AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Forms\Components\Select::make('papel')

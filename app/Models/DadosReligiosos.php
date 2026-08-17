@@ -27,6 +27,7 @@ class DadosReligiosos extends Model
         'paroquia_transferencia',
         'ano_transferencia',
         'pertence_grupo',
+        'nome_grupo',
     ];
 
     protected $casts = [

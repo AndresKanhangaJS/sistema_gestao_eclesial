@@ -5,12 +5,14 @@ namespace App\Filament\Resources;
 use App\Enums\StatusConciliacao;
 use App\Enums\TipoMovimento;
 use App\Filament\Resources\MovimentoResource\Pages;
+use App\Models\CategoriaReceita;
 use App\Models\Centro;
 use App\Models\MetodoPagamento;
 use App\Models\Movimento;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -52,34 +54,116 @@ class MovimentoResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Lançamento')
                             ->schema([
-                                Forms\Components\Select::make('tipo')
-                                    ->label('Tipo')
+                                Forms\Components\Select::make('natureza')
+                                    ->label('Natureza')
                                     ->options([
-                                        TipoMovimento::Dizimo->value => 'Dízimo',
-                                        TipoMovimento::Ofertorio->value => 'Ofertório',
-                                        TipoMovimento::Campanha->value => 'Outras Contribuições',
-                                        TipoMovimento::DespesaCentro->value => 'Despesa de Centro',
+                                        'receita' => 'Receita',
+                                        'despesa' => 'Despesa',
                                     ])
                                     ->required()
-                                    ->live(),
+                                    ->live()
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function (Forms\Components\Select $component, ?Model $record) {
+                                        if (! $record) {
+                                            return;
+                                        }
+
+                                        $component->state($record->tipo === TipoMovimento::DespesaCentro ? 'despesa' : 'receita');
+                                    })
+                                    ->afterStateUpdated(function (?string $state, Set $set) {
+                                        if ($state === 'despesa') {
+                                            $set('tipo', TipoMovimento::DespesaCentro->value);
+                                            $set('categoria_receita_id', null);
+                                            $set('categoria_movimento', null);
+                                        } else {
+                                            $set('tipo', null);
+                                            $set('categoria_despesa_id', null);
+                                        }
+                                    }),
+                                // Campo virtual (nao existe na BD): junta dizimo/ofertorio e as
+                                // categorias de receita registadas numa unica lista, ao mesmo
+                                // nivel — pedido do cliente ("tudo e receita"). A escolha aqui
+                                // determina o tipo (e categoria_receita_id, quando aplicavel)
+                                // reais, guardados nos campos escondidos abaixo.
+                                Forms\Components\Select::make('categoria_movimento')
+                                    ->label('Categoria')
+                                    ->options(fn () => collect([
+                                        TipoMovimento::Dizimo->value => 'Dízimo',
+                                        TipoMovimento::Ofertorio->value => 'Ofertório',
+                                    ])
+                                        ->merge(
+                                            CategoriaReceita::where('status', 'ativo')
+                                                ->orderBy('nome')
+                                                ->pluck('nome', 'id')
+                                                ->mapWithKeys(fn ($nome, $id) => ["cr_{$id}" => $nome])
+                                        )
+                                        ->put(TipoMovimento::Campanha->value, 'Outras Contribuições (sem categoria específica)')
+                                        ->all())
+                                    ->required(fn (Get $get) => $get('natureza') === 'receita')
+                                    ->visible(fn (Get $get) => $get('natureza') === 'receita')
+                                    ->live()
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function (Forms\Components\Select $component, ?Model $record) {
+                                        if (! $record || $record->tipo === TipoMovimento::DespesaCentro) {
+                                            return;
+                                        }
+
+                                        $component->state(
+                                            $record->tipo === TipoMovimento::Campanha && $record->categoria_receita_id
+                                                ? "cr_{$record->categoria_receita_id}"
+                                                : $record->tipo->value
+                                        );
+                                    })
+                                    ->afterStateUpdated(function (?string $state, Set $set) {
+                                        if (! filled($state)) {
+                                            return;
+                                        }
+
+                                        if (str_starts_with($state, 'cr_')) {
+                                            $set('tipo', TipoMovimento::Campanha->value);
+                                            $set('categoria_receita_id', (int) substr($state, 3));
+
+                                            return;
+                                        }
+
+                                        $set('tipo', $state);
+                                        $set('categoria_receita_id', null);
+                                    }),
+                                Forms\Components\Hidden::make('tipo'),
+                                Forms\Components\Hidden::make('categoria_receita_id'),
                                 Forms\Components\Select::make('centro_id')
                                     ->label('Centro')
                                     ->relationship('centro', 'nome')
                                     ->required()
-                                    ->visible(fn () => ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false))
-                                    ->default(fn () => Auth::user()?->centro_id),
+                                    ->live()
+                                    ->visible(fn () => ! (Auth::user()?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ?? false))
+                                    ->default(fn () => Auth::user()?->centro_id)
+                                    ->afterStateUpdated(fn (Set $set) => $set('fiel_id', null)),
                                 Forms\Components\Select::make('fiel_id')
                                     ->label('Fiel')
-                                    ->relationship('fiel', 'nome')
+                                    ->relationship(
+                                        'fiel',
+                                        'nome',
+                                        modifyQueryUsing: fn (Builder $query, Get $get) => $query
+                                            ->where('status', 'ativo')
+                                            ->when(
+                                                $get('centro_id'),
+                                                fn (Builder $query, $centroId) => $query->whereHas(
+                                                    'centros',
+                                                    fn (Builder $query) => $query->where('centros.id', $centroId)->whereNull('fiel_centros.data_fim')
+                                                )
+                                            ),
+                                    )
                                     ->searchable()
                                     ->preload()
                                     ->required(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
-                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value),
+                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::Dizimo->value)
+                                    ->helperText('Só mostra fiéis activos vinculados ao centro seleccionado acima.'),
                                 Forms\Components\Select::make('categoria_despesa_id')
                                     ->label('Categoria de Despesa')
                                     ->relationship('categoriaDespesa', 'nome')
-                                    ->required(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value)
-                                    ->visible(fn (Get $get) => $get('tipo') === TipoMovimento::DespesaCentro->value),
+                                    ->required(fn (Get $get) => $get('natureza') === 'despesa')
+                                    ->visible(fn (Get $get) => $get('natureza') === 'despesa'),
                                 Forms\Components\TextInput::make('valor')
                                     ->label('Valor')
                                     ->required()
@@ -223,7 +307,7 @@ class MovimentoResource extends Resource
                 Tables\Filters\SelectFilter::make('centro_id')
                     ->label('Centro')
                     ->options(fn () => Centro::pluck('nome', 'id'))
-                    ->visible(fn () => ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false)),
+                    ->visible(fn () => ! (Auth::user()?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ?? false)),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -284,7 +368,7 @@ class MovimentoResource extends Resource
 
         $user = Auth::user();
 
-        if ($user && $user->hasRole('tesoureiro_centro')) {
+        if ($user && $user->hasRole(['tesoureiro_centro', 'coordenador_centro'])) {
             $query->where('centro_id', $user->centro_id);
         }
 

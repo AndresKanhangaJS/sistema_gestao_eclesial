@@ -22,7 +22,7 @@ class RastreabilidadeBancaria extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Rastreabilidade Bancária';
 
-    protected static ?string $title = 'Relatório — Rastreabilidade Bancária por Conta';
+    protected static ?string $title = 'Rastreabilidade Bancária por Conta';
 
     protected static string $view = 'filament.pages.relatorios.rastreabilidade-bancaria';
 

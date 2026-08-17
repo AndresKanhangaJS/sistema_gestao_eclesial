@@ -23,6 +23,12 @@ class RoleSeeder extends Seeder
      * - tesoureiro_paroquial: financeiro completo + conciliacao bancaria da
      *   sua paroquia, sem gerir utilizadores.
      * - tesoureiro_centro: apenas o seu centro, sem conciliacao.
+     * - coordenador_centro: supervisiona o seu centro — CRUD de Fieis +
+     *   CRUD de Movimentos, mesmo alcance financeiro do tesoureiro_centro
+     *   (sem conciliacao), mais gestao de Fieis que o tesoureiro_centro
+     *   nunca teve.
+     * - secretario_centro: so gestao de Fieis do seu centro, sem qualquer
+     *   acesso a Movimentos/valores/relatorios.
      * - consultor: so leitura, global (todas as paroquias).
      *
      * - coordenador_catequese_paroquia: gere turmas/catequistas/catequizandos/
@@ -42,6 +48,8 @@ class RoleSeeder extends Seeder
             'administrador_paroquial',
             'tesoureiro_paroquial',
             'tesoureiro_centro',
+            'coordenador_centro',
+            'secretario_centro',
             'consultor',
             'coordenador_catequese_paroquia',
             'coordenador_catequese_centro',

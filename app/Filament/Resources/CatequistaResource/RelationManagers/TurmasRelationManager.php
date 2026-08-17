@@ -8,6 +8,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Actions\AttachAction;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -70,6 +71,13 @@ class TurmasRelationManager extends RelationManager
             ->headerActions([
                 AttachAction::make()
                     ->visible(fn () => self::podeGerir())
+                    // centro_id do catequista e "centro principal", nullable — se
+                    // nao tiver um definido (catequista da paroquia inteira), nao
+                    // filtra, para nao esconder todas as turmas por engano.
+                    ->recordSelectOptionsQuery(fn (Builder $query) => $query->when(
+                        $this->getOwnerRecord()->centro_id,
+                        fn (Builder $query, $centroId) => $query->where('centro_id', $centroId)
+                    ))
                     ->form(fn (AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Forms\Components\Select::make('papel')

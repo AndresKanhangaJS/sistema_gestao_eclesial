@@ -42,7 +42,7 @@ class MatrizDizimos extends Page implements HasActions, HasForms
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro']) ?? false;
     }
 
     public function mount(): void
@@ -122,7 +122,7 @@ class MatrizDizimos extends Page implements HasActions, HasForms
             return Centro::withoutGlobalScopes()->whereKey($centroId)->exists();
         }
 
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(['tesoureiro_centro', 'coordenador_centro'])) {
             return $centroId === $user->centro_id;
         }
 

@@ -8,7 +8,13 @@ use Illuminate\Support\Facades\Auth;
 
 class ArrecadacaoPieChart extends ChartWidget
 {
-    protected static ?string $heading = 'Proporção por tipo de receita';
+    protected static ?string $heading = 'Proporção por categoria de receita';
+
+    protected static ?string $maxHeight = '320px';
+
+    protected int|string|array $columnSpan = 'full';
+
+    private const CORES = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
     public ?int $ano = null;
 
@@ -17,6 +23,7 @@ class ArrecadacaoPieChart extends ChartWidget
     {
         return ! (Auth::user()?->hasRole([
             'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese',
+            'secretario_centro',
         ]) ?? false);
     }
 
@@ -24,22 +31,20 @@ class ArrecadacaoPieChart extends ChartWidget
     {
         $ano = $this->ano ?? now()->year;
         $user = Auth::user();
-        $centroId = $user?->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
 
         $dados = DemonstrativoArrecadacaoService::calcular($ano, $centroId);
+
+        $categorias = $dados['categorias']->values();
 
         return [
             'datasets' => [
                 [
-                    'data' => [
-                        $dados['por_tipo']['dizimo'],
-                        $dados['por_tipo']['ofertorio'],
-                        $dados['por_tipo']['campanha'],
-                    ],
-                    'backgroundColor' => ['#3b82f6', '#10b981', '#f59e0b'],
+                    'data' => $categorias->map(fn (array $categoria) => $dados['por_categoria'][$categoria['chave']])->all(),
+                    'backgroundColor' => $categorias->map(fn (array $categoria, int $indice) => self::CORES[$indice % count(self::CORES)])->all(),
                 ],
             ],
-            'labels' => ['Dízimo', 'Ofertório', 'Outras Contribuições'],
+            'labels' => $categorias->pluck('nome')->all(),
         ];
     }
 

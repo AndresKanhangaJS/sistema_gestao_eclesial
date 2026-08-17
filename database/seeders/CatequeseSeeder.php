@@ -36,6 +36,7 @@ class CatequeseSeeder extends Seeder
             1 => 'Baptismo',
             2 => 'Comunhão',
             3 => 'Crisma',
+            4 => 'Perseverança',
         ];
 
         foreach ($sacramentos as $ordem => $nome) {

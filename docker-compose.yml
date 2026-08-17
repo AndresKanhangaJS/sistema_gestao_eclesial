@@ -1,4 +1,14 @@
+# Ambiente de desenvolvimento do SGE — 6 serviços: servidor web (nginx),
+# aplicação PHP (php-fpm), base de dados (mysql), cache/filas (redis), e
+# dois processos PHP auxiliares que correm em segundo plano (scheduler,
+# worker). Todos partilham o código da app via bind mount (./:/var/www/html)
+# e a mesma rede interna "sge", para se conseguirem falar uns com os outros
+# pelo nome do serviço (ex.: o php-fpm liga-se à BD como "mysql", não
+# "localhost").
 services:
+  # Servidor web: recebe os pedidos HTTP em localhost:8080 e encaminha-os
+  # para o php-fpm (nginx não corre PHP directamente, só serve ficheiros
+  # estáticos e faz proxy do resto).
   nginx:
     image: nginx:stable-alpine
     container_name: sge_nginx
@@ -13,6 +23,10 @@ services:
     networks:
       - sge
 
+  # Aplicação Laravel em si (processa os pedidos que o nginx encaminha).
+  # Imagem construída a partir do Dockerfile próprio (docker/php/Dockerfile),
+  # não uma imagem PHP genérica — é onde ficam instaladas as extensões PHP e
+  # o Chromium usado para gerar os PDFs dos relatórios.
   php-fpm:
     build:
       context: .
@@ -22,8 +36,13 @@ services:
     volumes:
       - ./:/var/www/html
     environment:
+      # Usado pelos IDEs (ex. PhpStorm) para associar o path-mapping do
+      # debugger Xdebug a este container — não afecta o comportamento da app.
       - PHP_IDE_CONFIG=serverName=sge
     depends_on:
+      # "condition: service_healthy" espera mesmo que o MySQL esteja pronto a
+      # aceitar ligações (não só que o container tenha arrancado) — sem isto
+      # o Laravel podia tentar ligar-se à BD antes dela estar disponível.
       mysql:
         condition: service_healthy
       redis:
@@ -31,6 +50,9 @@ services:
     networks:
       - sge
 
+  # Base de dados MySQL 8.0. Dados persistem no volume nomeado
+  # sge_mysql_data, por isso sobrevivem a um "docker compose down" (só se
+  # perdem com "docker compose down -v").
   mysql:
     image: mysql:8.0
     container_name: sge_mysql
@@ -44,6 +66,8 @@ services:
       - "3306:3306"
     volumes:
       - sge_mysql_data:/var/lib/mysql
+    # Verifica se o MySQL já aceita ligações (usado pelo "condition:
+    # service_healthy" acima, nos serviços que dependem da BD).
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usge_user", "-psge_pass"]
       interval: 5s
@@ -52,6 +76,9 @@ services:
     networks:
       - sge
 
+  # Cache e filas (queue) do Laravel — usado pelo worker abaixo para
+  # processar jobs em segundo plano (ex.: importações em massa de Fiéis/
+  # Catequizandos/Catequistas, geração de PDFs pesados).
   redis:
     image: redis:7-alpine
     container_name: sge_redis
@@ -63,6 +90,12 @@ services:
     networks:
       - sge
 
+  # Corre as tarefas agendadas do Laravel (php artisan schedule:run) a cada
+  # 60 segundos, num loop simples em shell — é o equivalente, em Docker, à
+  # entrada de cron que normalmente se configurava num servidor tradicional.
+  # Hoje o projecto não tem nenhuma tarefa agendada definida, mas o serviço
+  # já fica pronto para quando for preciso (ex.: lembretes de dízimo,
+  # relatórios periódicos).
   scheduler:
     build:
       context: .
@@ -81,6 +114,12 @@ services:
     networks:
       - sge
 
+  # Processa os jobs colocados na fila (Redis) fora do ciclo pedido/resposta
+  # HTTP — ex.: as importações em massa (Fiéis, Catequizandos, Catequistas)
+  # correm aqui, não no próprio pedido do browser, para o utilizador não
+  # ficar à espera de um ficheiro grande a processar.
+  # --tries=3: uma job falhada é tentada até 3 vezes antes de ser marcada
+  # como definitivamente falhada.
   worker:
     build:
       context: .
@@ -98,10 +137,15 @@ services:
     networks:
       - sge
 
+# Rede interna partilhada por todos os serviços — permite que se encontrem
+# uns aos outros pelo nome (ex.: DB_HOST=mysql no .env, não um IP fixo).
 networks:
   sge:
     driver: bridge
 
+# Volumes nomeados (guardados pelo Docker, fora da pasta do projecto) — é
+# aqui que os dados da BD e do Redis sobrevivem entre reinícios dos
+# containers.
 volumes:
   sge_mysql_data:
   sge_redis_data:

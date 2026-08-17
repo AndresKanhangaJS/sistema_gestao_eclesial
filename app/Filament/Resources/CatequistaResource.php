@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Concerns\TemExportacaoComEstado;
 use App\Filament\Resources\CatequistaResource\Pages;
 use App\Filament\Resources\CatequistaResource\RelationManagers\TurmasRelationManager;
 use App\Models\Catequista;
 use App\Models\Fiel;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,6 +18,8 @@ use Illuminate\Support\Facades\Auth;
 
 class CatequistaResource extends Resource
 {
+    use TemExportacaoComEstado;
+
     protected static ?string $model = Catequista::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user';
@@ -43,36 +47,68 @@ class CatequistaResource extends Resource
                             ->label('Paróquia')
                             ->relationship('paroquia', 'nome')
                             ->required()
+                            ->live()
                             ->visible(fn () => Auth::user()?->hasRole('admin_geral') ?? false)
                             ->default(fn () => Auth::user()?->paroquia_id),
                         Forms\Components\Select::make('centro_id')
                             ->label('Centro Principal')
                             ->relationship('centro', 'nome')
+                            ->live()
                             ->visible(fn () => Auth::user()?->hasRole(self::GESTORES_CENTRO_LIVRE) ?? false)
-                            ->default(fn () => Auth::user()?->centro_id),
+                            ->default(fn () => Auth::user()?->centro_id)
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('fiel_id', null)),
                         Forms\Components\Select::make('fiel_id')
                             ->label('Fiel vinculado')
-                            ->relationship('fiel', 'nome')
+                            ->relationship(
+                                'fiel',
+                                'nome',
+                                modifyQueryUsing: fn (Builder $query, Get $get) => $query
+                                    ->where('status', 'ativo')
+                                    ->when(
+                                        $get('centro_id'),
+                                        fn (Builder $query, $centroId) => $query->whereHas(
+                                            'centros',
+                                            fn (Builder $query) => $query->where('centros.id', $centroId)->whereNull('fiel_centros.data_fim')
+                                        )
+                                    ),
+                            )
                             ->searchable()
                             ->preload()
                             ->live()
                             ->afterStateUpdated(function (?string $state, Forms\Set $set) {
-                                if (filled($state)) {
-                                    $set('nome_completo', Fiel::find($state)?->nome);
+                                if (! filled($state)) {
+                                    return;
                                 }
+
+                                $fiel = Fiel::find($state);
+
+                                $set('nome_completo', $fiel?->nome);
+                                $set('data_nascimento', $fiel?->data_nascimento?->toDateString());
+                                $set('telefone', $fiel?->telefone);
+                                $set('email', $fiel?->email);
                             })
-                            ->helperText('Opcional — só se o catequista já estiver cadastrado como Fiel. Ao seleccionar, copia o nome automaticamente (pode editar a seguir).'),
+                            ->helperText('Opcional: só fiéis activos vinculados ao Centro Principal acima (se escolhido). Ao seleccionar, copia nome, data de nascimento, telefone e email automaticamente (pode editar a seguir).'),
                         Forms\Components\Select::make('user_id')
                             ->label('Utilizador (login)')
-                            ->relationship('user', 'name')
+                            ->relationship(
+                                'user',
+                                'name',
+                                modifyQueryUsing: fn (Builder $query, Get $get) => $query->where(
+                                    'paroquia_id',
+                                    $get('paroquia_id') ?? Auth::user()?->paroquia_id
+                                ),
+                            )
                             ->searchable()
                             ->preload()
-                            ->helperText('Opcional — só se o catequista tiver acesso próprio ao sistema.'),
+                            ->helperText('Opcional: só se o catequista tiver acesso próprio ao sistema.'),
                         Forms\Components\TextInput::make('nome_completo')
                             ->label('Nome Completo')
                             ->required()
                             ->maxLength(150)
                             ->columnSpanFull(),
+                        Forms\Components\DatePicker::make('data_nascimento')
+                            ->label('Data de Nascimento')
+                            ->maxDate(now()),
                         Forms\Components\TextInput::make('telefone')
                             ->label('Telefone')
                             ->tel()
@@ -101,6 +137,12 @@ class CatequistaResource extends Resource
                 Tables\Columns\TextColumn::make('centro.nome')
                     ->label('Centro')
                     ->placeholder('—'),
+                Tables\Columns\TextColumn::make('data_nascimento')
+                    ->label('Data de Nascimento')
+                    ->date()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('telefone')
                     ->placeholder('—'),
                 Tables\Columns\TextColumn::make('email')
@@ -118,6 +160,15 @@ class CatequistaResource extends Resource
                 Tables\Filters\TernaryFilter::make('ativo')
                     ->label('Activo'),
                 Tables\Filters\TrashedFilter::make(),
+            ])
+            ->headerActions([
+                self::accaoExportarComEstado(
+                    opcoesEstado: ['todos' => 'Todos', 'ativo' => 'Activo', 'inativo' => 'Inactivo'],
+                    estadoPorOmissao: 'ativo',
+                    rotaExcel: 'relatorios.catequistas.excel',
+                    rotaPdf: 'relatorios.catequistas.pdf',
+                    comAnoLectivo: true,
+                ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

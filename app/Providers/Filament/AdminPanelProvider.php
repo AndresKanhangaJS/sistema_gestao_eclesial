@@ -32,6 +32,17 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            // Permite recolher o menu lateral no desktop (fica so com os
+            // icones + a opcao seleccionada em destaque); continua
+            // totalmente clicavel/navegavel nesse estado, so o texto some.
+            ->sidebarCollapsibleOnDesktop()
+            // Sino de notificacoes no topo do painel — sem isto, mesmo com a
+            // tabela `notifications` a existir e a ser preenchida (ex.: pelo
+            // ImportAction ao terminar uma importacao em segundo plano), nao
+            // ha nenhuma superficie na UI a mostrar essas notificacoes ao
+            // utilizador (bug reportado: "os dados persistem mas a
+            // mensagem de sucesso nao aparece").
+            ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

@@ -14,6 +14,10 @@ class InscricoesPorEstadoChart extends ChartWidget
 
     protected static ?string $heading = 'Inscrições por Estado';
 
+    protected static ?string $maxHeight = '320px';
+
+    protected int|string|array $columnSpan = 'full';
+
     public static function canView(): bool
     {
         return Auth::user()?->hasRole(self::PAPEIS_CATEQUESE) ?? false;

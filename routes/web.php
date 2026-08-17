@@ -1,11 +1,19 @@
 <?php
 
+use App\Enums\EstadoInscricaoTurma;
 use App\Exports\ArrayExport;
+use App\Models\AnoLetivo;
+use App\Models\Catequista;
+use App\Models\Catequizando;
 use App\Models\Centro;
 use App\Models\FielCentro;
+use App\Models\Inscricao;
 use App\Models\Movimento;
+use App\Models\Turma;
+use Illuminate\Support\Str;
 use App\Services\BalancoReceitasDespesasService;
 use App\Services\DemonstrativoArrecadacaoService;
+use App\Services\DemonstrativoDespesasService;
 use App\Services\FieisPorSituacaoService;
 use App\Services\MatrizDizimosService;
 use App\Support\RelatorioPdf;
@@ -87,18 +95,17 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
 
         $rows = [];
         foreach ($meses as $i => $mesLabel) {
-            $linha = $dados['por_mes_tipo'][$i + 1];
-            $rows[] = [
-                'Mês' => $mesLabel,
-                'Dízimo' => $linha['dizimo'],
-                'Ofertório' => $linha['ofertorio'],
-                'Outras Contribuições' => $linha['campanha'],
-                'Total' => array_sum($linha),
-            ];
+            $linha = $dados['por_mes_categoria'][$i + 1];
+            $row = ['Mês' => $mesLabel];
+            foreach ($dados['categorias'] as $categoria) {
+                $row[$categoria['nome']] = $linha[$categoria['chave']];
+            }
+            $row['Total'] = array_sum($linha);
+            $rows[] = $row;
         }
 
         return Excel::download(
-            new ArrayExport($rows, ['Mês', 'Dízimo', 'Ofertório', 'Outras Contribuições', 'Total']),
+            new ArrayExport($rows, ['Mês', ...$dados['categorias']->pluck('nome')->all(), 'Total']),
             'demonstrativo-arrecadacao.xlsx'
         );
     })->name('demonstrativo-arrecadacao.excel');
@@ -111,12 +118,53 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
         $ano = (int) $request->query('ano', now()->year);
 
         return RelatorioPdf::view('pdfs.relatorios.demonstrativo-arrecadacao', [
-            'titulo' => 'Demonstrativo Unificado de Arrecadação',
+            'titulo' => 'Demonstrativo Unificado de Receitas (Arrecadação)',
             'paroquia' => $user->paroquia,
             'ano' => $ano,
             'dados' => DemonstrativoArrecadacaoService::calcular($ano, $centroId),
         ])->name('demonstrativo-arrecadacao.pdf');
     })->name('demonstrativo-arrecadacao.pdf');
+
+    Route::get('/demonstrativo-despesas/excel', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+
+        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $ano = (int) $request->query('ano', now()->year);
+        $dados = DemonstrativoDespesasService::calcular($ano, $centroId);
+        $meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        $rows = [];
+        foreach ($meses as $i => $mesLabel) {
+            $linha = $dados['por_mes_categoria'][$i + 1];
+            $row = ['Mês' => $mesLabel];
+            foreach ($dados['categorias'] as $categoria) {
+                $row[$categoria->nome] = $linha[$categoria->id];
+            }
+            $row['Total'] = array_sum($linha);
+            $rows[] = $row;
+        }
+
+        return Excel::download(
+            new ArrayExport($rows, ['Mês', ...$dados['categorias']->pluck('nome')->all(), 'Total']),
+            'demonstrativo-despesas.xlsx'
+        );
+    })->name('demonstrativo-despesas.excel');
+
+    Route::get('/demonstrativo-despesas/pdf', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']), 403);
+
+        $centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $ano = (int) $request->query('ano', now()->year);
+
+        return RelatorioPdf::view('pdfs.relatorios.demonstrativo-despesas', [
+            'titulo' => 'Demonstrativo Unificado de Despesas',
+            'paroquia' => $user->paroquia,
+            'ano' => $ano,
+            'dados' => DemonstrativoDespesasService::calcular($ano, $centroId),
+        ])->name('demonstrativo-despesas.pdf');
+    })->name('demonstrativo-despesas.pdf');
 
     Route::get('/rastreabilidade-bancaria/pdf', function () {
         $user = Auth::user();
@@ -226,5 +274,276 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
             'atividades' => Activity::where('subject_type', Movimento::class)->with('causer')->latest()->get(),
         ])->name('log-auditoria.pdf');
     })->name('log-auditoria.pdf');
+
+    // Exportacoes Excel/PDF do modulo Catequese — mesmos criterios de papel
+    // dos viewAny() das Policies correspondentes (TurmaPolicy/
+    // CatequizandoPolicy/InscricaoPolicy/CatequistaPolicy), com o mesmo
+    // reforco de centro_id para quem so gere/le o seu proprio centro. Todas
+    // aceitam ?estado= (ver App\Filament\Concerns\TemExportacaoComEstado, que
+    // monta o link a partir do modal "Exportar" nos Resources/RelationManagers)
+    // — "todos" nao filtra, qualquer outro valor filtra pela coluna de estado
+    // relevante a cada lista.
+    Route::get('/turma/{turma}/catequizandos/excel', function (Turma $turma, Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            abort_unless($turma->centro_id === $user->centro_id, 403);
+        }
+
+        $estado = $request->query('estado', EstadoInscricaoTurma::Ativo->value);
+
+        $inscricoes = $turma->inscricoes()
+            ->with('catequizando')
+            ->when($estado !== 'todos', fn ($q) => $q->where('inscricao_turma.status', $estado))
+            ->get();
+
+        $rows = $inscricoes->values()->map(fn ($inscricao, $indice) => [
+            'Nº' => $indice + 1,
+            'Catequizando' => $inscricao->catequizando->nome_completo,
+            'Nº Ficha' => $inscricao->numero_ficha,
+            'Início' => $inscricao->pivot->data_inicio->format('d/m/Y'),
+            'Estado' => $inscricao->pivot->status->label(),
+        ])->all();
+
+        $nomeFicheiro = 'catequizandos_'.Str::slug($turma->descricaoCurta()).'_'.$estado;
+
+        return Excel::download(
+            new ArrayExport($rows, ['Nº', 'Catequizando', 'Nº Ficha', 'Início', 'Estado']),
+            "{$nomeFicheiro}.xlsx"
+        );
+    })->name('turma-catequizandos.excel');
+
+    Route::get('/turma/{turma}/catequizandos/pdf', function (Turma $turma, Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            abort_unless($turma->centro_id === $user->centro_id, 403);
+        }
+
+        $estado = $request->query('estado', EstadoInscricaoTurma::Ativo->value);
+        $nomeFicheiro = 'catequizandos_'.Str::slug($turma->descricaoCurta()).'_'.$estado;
+
+        return RelatorioPdf::view('pdfs.relatorios.turma-catequizandos', [
+            'titulo' => 'Catequizandos da Turma',
+            'paroquia' => $user->paroquia,
+            'turma' => $turma,
+            'sacramentos' => $turma->sacramentos,
+            'catequistas' => $turma->catequistas()->wherePivotNull('data_fim')->get(),
+            'inscricoes' => $turma->inscricoes()
+                ->with('catequizando')
+                ->when($estado !== 'todos', fn ($q) => $q->where('inscricao_turma.status', $estado))
+                ->get(),
+        ])->name("{$nomeFicheiro}.pdf");
+    })->name('turma-catequizandos.pdf');
+
+    Route::get('/catequizandos/excel', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        $estado = $request->query('estado', 'ativo');
+        $anoLetivo = $request->query('ano_letivo', 'todos');
+
+        $query = Catequizando::query()->with('centro');
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            $query->where('centro_id', $user->centro_id);
+        }
+
+        if ($estado !== 'todos') {
+            $query->where('status', $estado);
+        }
+
+        if ($anoLetivo !== 'todos') {
+            $query->whereHas('inscricoes', fn ($q) => $q->where('ano_letivo_id', $anoLetivo));
+        }
+
+        $rows = $query->orderBy('nome_completo')->get()->values()->map(fn ($catequizando, $indice) => [
+            'Nº' => $indice + 1,
+            'Nome' => $catequizando->nome_completo,
+            'Centro' => $catequizando->centro->nome,
+            'Data de Nascimento' => $catequizando->data_nascimento->format('d/m/Y'),
+            'Sexo' => $catequizando->sexo === 'M' ? 'Masculino' : 'Feminino',
+            'Telefone' => $catequizando->telefone,
+            'Estado' => $catequizando->status === 'ativo' ? 'Activo' : 'Inactivo',
+        ])->all();
+
+        $nomeFicheiro = 'catequizandos_'.AnoLetivo::slugParaExportacao($anoLetivo).'_'.$estado;
+
+        return Excel::download(
+            new ArrayExport($rows, ['Nº', 'Nome', 'Centro', 'Data de Nascimento', 'Sexo', 'Telefone', 'Estado']),
+            "{$nomeFicheiro}.xlsx"
+        );
+    })->name('catequizandos.excel');
+
+    Route::get('/catequizandos/pdf', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        $estado = $request->query('estado', 'ativo');
+        $anoLetivo = $request->query('ano_letivo', 'todos');
+
+        $query = Catequizando::query()->with('centro');
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            $query->where('centro_id', $user->centro_id);
+        }
+
+        if ($estado !== 'todos') {
+            $query->where('status', $estado);
+        }
+
+        if ($anoLetivo !== 'todos') {
+            $query->whereHas('inscricoes', fn ($q) => $q->where('ano_letivo_id', $anoLetivo));
+        }
+
+        $nomeFicheiro = 'catequizandos_'.AnoLetivo::slugParaExportacao($anoLetivo).'_'.$estado;
+
+        return RelatorioPdf::view('pdfs.relatorios.catequizandos', [
+            'titulo' => 'Lista de Catequizandos',
+            'paroquia' => $user->paroquia,
+            'catequizandos' => $query->orderBy('nome_completo')->get(),
+        ])->name("{$nomeFicheiro}.pdf");
+    })->name('catequizandos.pdf');
+
+    Route::get('/inscricoes/excel', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        $estado = $request->query('estado', 'todos');
+        $anoLetivo = $request->query('ano_letivo', 'todos');
+
+        $query = Inscricao::query()->with(['catequizando', 'centro', 'anoLetivo', 'anoCatequetico', 'sacramentos']);
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            $query->where('centro_id', $user->centro_id);
+        }
+
+        if ($estado !== 'todos') {
+            $query->where('estado', $estado);
+        }
+
+        if ($anoLetivo !== 'todos') {
+            $query->where('ano_letivo_id', $anoLetivo);
+        }
+
+        $rows = $query->orderBy('data_atendimento', 'desc')->get()->values()->map(fn ($inscricao, $indice) => [
+            'Nº' => $indice + 1,
+            'Catequizando' => $inscricao->catequizando->nome_completo,
+            'Centro' => $inscricao->centro->nome,
+            'Ano Lectivo' => $inscricao->anoLetivo->nome,
+            'Ano Catequese' => $inscricao->anoCatequetico->nome ?? '',
+            'Sacramento(s)' => $inscricao->sacramentos->pluck('nome')->implode(', '),
+            'Nº Ficha' => $inscricao->numero_ficha,
+            'Data' => $inscricao->data_atendimento->format('d/m/Y'),
+            'Estado' => ucfirst($inscricao->estado->value),
+        ])->all();
+
+        $nomeFicheiro = 'inscricoes_'.AnoLetivo::slugParaExportacao($anoLetivo).'_'.$estado;
+
+        return Excel::download(
+            new ArrayExport($rows, ['Nº', 'Catequizando', 'Centro', 'Ano Lectivo', 'Ano Catequese', 'Sacramento(s)', 'Nº Ficha', 'Data', 'Estado']),
+            "{$nomeFicheiro}.xlsx"
+        );
+    })->name('inscricoes.excel');
+
+    Route::get('/inscricoes/pdf', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        $estado = $request->query('estado', 'todos');
+        $anoLetivo = $request->query('ano_letivo', 'todos');
+
+        $query = Inscricao::query()->with(['catequizando', 'centro', 'anoLetivo', 'anoCatequetico', 'sacramentos']);
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            $query->where('centro_id', $user->centro_id);
+        }
+
+        if ($estado !== 'todos') {
+            $query->where('estado', $estado);
+        }
+
+        if ($anoLetivo !== 'todos') {
+            $query->where('ano_letivo_id', $anoLetivo);
+        }
+
+        $nomeFicheiro = 'inscricoes_'.AnoLetivo::slugParaExportacao($anoLetivo).'_'.$estado;
+
+        return RelatorioPdf::view('pdfs.relatorios.inscricoes', [
+            'titulo' => 'Lista de Inscrições',
+            'paroquia' => $user->paroquia,
+            'inscricoes' => $query->orderBy('data_atendimento', 'desc')->get(),
+        ])->name("{$nomeFicheiro}.pdf");
+    })->name('inscricoes.pdf');
+
+    Route::get('/catequistas/excel', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        $estado = $request->query('estado', 'ativo');
+        $anoLetivo = $request->query('ano_letivo', 'todos');
+
+        $query = Catequista::query()->with('centro');
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            $query->where('centro_id', $user->centro_id);
+        }
+
+        if ($estado !== 'todos') {
+            $query->where('ativo', $estado === 'ativo');
+        }
+
+        if ($anoLetivo !== 'todos') {
+            $query->whereHas('turmas', fn ($q) => $q->where('ano_letivo_id', $anoLetivo));
+        }
+
+        $rows = $query->orderBy('nome_completo')->get()->values()->map(fn ($catequista, $indice) => [
+            'Nº' => $indice + 1,
+            'Nome' => $catequista->nome_completo,
+            'Centro' => $catequista->centro?->nome,
+            'Telefone' => $catequista->telefone,
+            'Email' => $catequista->email,
+            'Estado' => $catequista->ativo ? 'Activo' : 'Inactivo',
+        ])->all();
+
+        $nomeFicheiro = 'catequistas_'.AnoLetivo::slugParaExportacao($anoLetivo).'_'.$estado;
+
+        return Excel::download(
+            new ArrayExport($rows, ['Nº', 'Nome', 'Centro', 'Telefone', 'Email', 'Estado']),
+            "{$nomeFicheiro}.xlsx"
+        );
+    })->name('catequistas.excel');
+
+    Route::get('/catequistas/pdf', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese']), 403);
+
+        $estado = $request->query('estado', 'ativo');
+        $anoLetivo = $request->query('ano_letivo', 'todos');
+
+        $query = Catequista::query()->with('centro');
+
+        if ($user->hasRole(['coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese'])) {
+            $query->where('centro_id', $user->centro_id);
+        }
+
+        if ($estado !== 'todos') {
+            $query->where('ativo', $estado === 'ativo');
+        }
+
+        if ($anoLetivo !== 'todos') {
+            $query->whereHas('turmas', fn ($q) => $q->where('ano_letivo_id', $anoLetivo));
+        }
+
+        $nomeFicheiro = 'catequistas_'.AnoLetivo::slugParaExportacao($anoLetivo).'_'.$estado;
+
+        return RelatorioPdf::view('pdfs.relatorios.catequistas', [
+            'titulo' => 'Lista de Catequistas',
+            'paroquia' => $user->paroquia,
+            'catequistas' => $query->orderBy('nome_completo')->get(),
+        ])->name("{$nomeFicheiro}.pdf");
+    })->name('catequistas.pdf');
 
 });

@@ -26,7 +26,7 @@ class LogAuditoria extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Log de Auditoria';
 
-    protected static ?string $title = 'Relatório — Log de Auditoria do Sistema';
+    protected static ?string $title = 'Log de Auditoria do Sistema';
 
     protected static string $view = 'filament.pages.relatorios.log-auditoria';
 

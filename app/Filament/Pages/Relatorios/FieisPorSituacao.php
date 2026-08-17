@@ -15,7 +15,7 @@ class FieisPorSituacao extends Page
 
     protected static ?string $navigationLabel = 'Fiéis por Situação';
 
-    protected static ?string $title = 'Relatório — Fiéis por Situação';
+    protected static ?string $title = 'Fiéis por Situação';
 
     protected static string $view = 'filament.pages.relatorios.fieis-por-situacao';
 
@@ -23,7 +23,7 @@ class FieisPorSituacao extends Page
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']) ?? false;
     }
 
     public function mount(): void
@@ -42,7 +42,7 @@ class FieisPorSituacao extends Page
     public function linhas(): array
     {
         $user = Auth::user();
-        $centroId = $user?->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
 
         return FieisPorSituacaoService::calcular($this->ano, $centroId);
     }

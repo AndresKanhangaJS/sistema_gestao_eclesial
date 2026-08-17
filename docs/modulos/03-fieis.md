@@ -4,7 +4,7 @@
 
 ## 1. Visão geral
 
-Cadastro dos fiéis/dizimistas de uma paróquia e o seu vínculo (com histórico) a um ou mais Centros ao longo do tempo, incluindo transferências entre centros. Base para a Matriz de Dízimos (Módulo 5) e para o lançamento de movimentos financeiros (Módulo 4). Usado por `administrador_paroquial`/`tesoureiro_paroquial` (CRUD completo), `tesoureiro_centro` (leitura, só do seu centro) e `consultor` (leitura global).
+Cadastro dos fiéis/dizimistas de uma paróquia e o seu vínculo (com histórico) a um ou mais Centros ao longo do tempo, incluindo transferências entre centros. Base para a Matriz de Dízimos (Módulo 5) e para o lançamento de movimentos financeiros (Módulo 4). Usado por `administrador_paroquial`/`tesoureiro_paroquial` (CRUD completo), `coordenador_centro`/`secretario_centro` (CRUD completo, só do seu centro — adicionado 2026-08-17), `tesoureiro_centro` (leitura, só do seu centro) e `consultor` (leitura global).
 
 ## 2. Tabelas de base de dados
 
@@ -42,11 +42,12 @@ Cadastro dos fiéis/dizimistas de uma paróquia e o seu vínculo (com histórico
 
 ### `FielPolicy`
 - Constante `GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial']`.
-- `viewAny`: gestores da paróquia + `tesoureiro_centro` + `consultor`.
-- `view`: `consultor` vê tudo; gestores veem fiéis da sua `paroquia_id`; `tesoureiro_centro` só vê fiéis com vínculo **activo** (`wherePivotNull('data_fim')`) ao seu próprio centro.
-- `create`: só gestores da paróquia.
-- `update`/`delete`/`restore`: gestores da paróquia, restrito à própria `paroquia_id` — **inclui soft-delete e restore** (ao contrário de `Movimento`, aqui `delete` é mesmo permitido, porque `Fiel` usa soft delete real).
-- `deleteAny`: gestores da paróquia.
+- Constante `GESTORES_CENTRO = ['coordenador_centro', 'secretario_centro']` (2026-08-17) — ao contrário de `tesoureiro_centro`, que só lê, estes dois papéis têm CRUD completo, restrito ao seu próprio centro.
+- `viewAny`: gestores da paróquia + `GESTORES_CENTRO` + `tesoureiro_centro` + `consultor`.
+- `view`: `consultor` vê tudo; gestores veem fiéis da sua `paroquia_id`; `GESTORES_CENTRO`/`tesoureiro_centro` só veem fiéis com vínculo **activo** (`wherePivotNull('data_fim')`) ao seu próprio centro.
+- `create`: gestores da paróquia + `GESTORES_CENTRO` (nunca `tesoureiro_centro`).
+- `update`/`delete`/`restore`: gestores da paróquia por `paroquia_id`, **ou** `GESTORES_CENTRO` por vínculo activo ao seu centro — **inclui soft-delete e restore** (ao contrário de `Movimento`, aqui `delete` é mesmo permitido, porque `Fiel` usa soft delete real).
+- `deleteAny`: gestores da paróquia + `GESTORES_CENTRO`.
 - `forceDelete`: sempre `false` — nunca remoção física.
 
 ## 5. Filament
@@ -55,13 +56,16 @@ Cadastro dos fiéis/dizimistas de uma paróquia e o seu vínculo (com histórico
   - Formulário em 2 tabs (Dados Pessoais / Contacto); campo `codigo_dizimista` sempre `disabled()->dehydrated(false)`, só visível em modo `edit` (nunca aparece no create, porque ainda não existe).
   - Coluna computada `centro_atual` no `table()`: `$record->centros()->wherePivotNull('data_fim')->first()`, mostra "Não vinculado" se nenhum activo.
   - Filtro `TrashedFilter::make()` — expõe fiéis com soft delete na listagem.
-  - `getEloquentQuery()`: reforça para `tesoureiro_centro` só ver fiéis com `whereHas('centros', ...)->whereNull('fiel_centros.data_fim')` no seu próprio centro.
+  - `getEloquentQuery()`: reforça para `tesoureiro_centro`/`coordenador_centro`/`secretario_centro` só ver fiéis com `whereHas('centros', ...)->whereNull('fiel_centros.data_fim')` no seu próprio centro.
   - `getRelations()`: `CentrosRelationManager`, `MovimentosRelationManager`.
+- **`CreateFiel::afterCreate()`** (2026-08-17): o form do Fiel não tem campo de centro (o vínculo vive só na pivot) — para `coordenador_centro`/`secretario_centro`, que estão presos a um só centro, faz `attach()` automático ao `centro_id` do utilizador autenticado (`principal: true`), mesmo padrão do `CreateCatequizando::afterCreate()`. Gestores da paróquia continuam a vincular manualmente via `CentrosRelationManager`.
 - **`CentrosRelationManager`** (relação `centros`, pivot `fiel_centros`):
   - `inverseRelationship = 'fieis'` explícito — sem isto o `AttachAction` tentaria adivinhar `Centro::fiels()` (pluralização inglesa incorrecta) e rebentava.
-  - `podeEscrever()`: só `admin_geral`/`administrador_paroquial`/`tesoureiro_paroquial` (não `tesoureiro_centro`, mesmo sendo leitura no seu centro).
-  - Acção customizada **`transferir`**: só visível se o vínculo actual estiver activo (`pivot->data_fim === null`); valida no servidor que o novo centro pertence à **mesma paróquia** do fiel (`Centro::withoutGlobalScopes()->where('paroquia_id', $fiel->paroquia_id)`) — necessário porque `admin_geral` não tem `ParoquiaScope` aplicada e veria todos os centros sem este filtro explícito. Fecha o vínculo antigo (`data_fim`) e cria um novo com `motivo_transferencia`.
+  - `podeEscrever()`: `admin_geral`/`administrador_paroquial`/`tesoureiro_paroquial`/`coordenador_centro`/`secretario_centro` (não `tesoureiro_centro`, que nunca gere Fiéis).
+  - `AttachAction::recordSelectOptionsQuery()` (2026-08-17): para `coordenador_centro`/`secretario_centro`, restringe as opções de centro ao seu próprio (`centroLivre()` só é `true` para os gestores da paróquia/`admin_geral`) — sem isto conseguiriam vincular um fiel a **qualquer** centro da paróquia, não só ao seu.
+  - Acção customizada **`transferir`** (mover para OUTRO centro): `podeTransferir()` continua restrita a `admin_geral`/`administrador_paroquial`/`tesoureiro_paroquial` — decisão inter-centro, fora do alcance de "CRUD de Fiéis do meu centro" de `coordenador_centro`/`secretario_centro`. Só visível se o vínculo actual estiver activo (`pivot->data_fim === null`); valida no servidor que o novo centro pertence à **mesma paróquia** do fiel (`Centro::withoutGlobalScopes()->where('paroquia_id', $fiel->paroquia_id)`) — necessário porque `admin_geral` não tem `ParoquiaScope` aplicada e veria todos os centros sem este filtro explícito. Fecha o vínculo antigo (`data_fim`) e cria um novo com `motivo_transferencia`.
   - Acção **`editarVinculo`**: edição directa dos campos do pivot (`data_fim`, `principal`, `motivo_transferencia`).
+- **`MovimentosRelationManager`** (extracto de movimentos do fiel): `canViewForRecord()` (2026-08-17) só mostra o separador se `Auth::user()->can('viewAny', Movimento::class)` — `secretario_centro` tem CRUD de Fiéis mas zero acesso a Movimentos (`MovimentoPolicy`), por isso nunca vê este separador, apesar de gerir o resto do Fiel.
 - **`ListFiels`**: adiciona `ImportAction` (`FielImporter`) além do `CreateAction`, com a mesma condição de visibilidade (`can('create', Fiel::class)`) — importar em massa não é um privilégio à parte.
 
 ### `FielImporter` (importação em massa)

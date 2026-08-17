@@ -26,13 +26,14 @@ class EstatisticasGeraisWidget extends BaseWidget
     {
         return ! (Auth::user()?->hasRole([
             'coordenador_catequese_paroquia', 'coordenador_catequese_centro', 'secretario_catequese', 'tesoureiro_catequese',
+            'secretario_centro',
         ]) ?? false);
     }
 
     protected function getStats(): array
     {
         $user = Auth::user();
-        $centroId = $user?->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
         $ano = now()->year;
 
         $fieisQuery = Fiel::query()->where('status', 'ativo');
@@ -50,20 +51,26 @@ class EstatisticasGeraisWidget extends BaseWidget
 
         $formatar = fn (float $valor) => 'Kz '.number_format($valor, 2, ',', '.');
 
+        // "Outras Contribuicoes" deixou de ser uma unica chave desde que o
+        // demonstrativo passou a abrir por categoria de receita (Casamentos,
+        // Baptizados, ...) — soma-se tudo o que nao e dizimo/ofertorio para
+        // manter o mesmo cartao resumo de sempre.
+        $outrasContribuicoes = $dados['total'] - $dados['por_categoria']['dizimo'] - $dados['por_categoria']['ofertorio'];
+
         return [
             Stat::make('Fiéis Activos', $totalFieisAtivos)
                 ->description('Dizimistas registados e activos')
                 ->icon('heroicon-o-users')
                 ->color('primary'),
-            Stat::make('Dízimos em '.$ano, $formatar($dados['por_tipo']['dizimo']))
+            Stat::make('Dízimos em '.$ano, $formatar($dados['por_categoria']['dizimo']))
                 ->description('Total arrecadado')
                 ->icon('heroicon-o-banknotes')
                 ->color('success'),
-            Stat::make('Ofertórios em '.$ano, $formatar($dados['por_tipo']['ofertorio']))
+            Stat::make('Ofertórios em '.$ano, $formatar($dados['por_categoria']['ofertorio']))
                 ->description('Total arrecadado')
                 ->icon('heroicon-o-banknotes')
                 ->color('info'),
-            Stat::make('Outras Contribuições em '.$ano, $formatar($dados['por_tipo']['campanha']))
+            Stat::make('Outras Contribuições em '.$ano, $formatar($outrasContribuicoes))
                 ->description('Total arrecadado')
                 ->icon('heroicon-o-banknotes')
                 ->color('warning'),

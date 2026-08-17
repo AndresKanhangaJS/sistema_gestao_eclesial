@@ -11,17 +11,18 @@ class CreateMovimento extends CreateRecord
     protected static string $resource = MovimentoResource::class;
 
     /**
-     * O campo centro_id fica oculto no formulario para tesoureiro_centro
-     * (nao deve escolher centro) e o seu valor de dehydrate nao e fiavel.
-     * Forca-se aqui, no servidor, a mesma fonte de verdade usada no
-     * lancamento em lote da Matriz de Dizimos: o centro do utilizador
-     * autenticado — de onde o MovimentoObserver deriva o paroquia_id.
+     * O campo centro_id fica oculto no formulario para tesoureiro_centro e
+     * coordenador_centro (nao devem escolher centro) e o seu valor de
+     * dehydrate nao e fiavel. Forca-se aqui, no servidor, a mesma fonte de
+     * verdade usada no lancamento em lote da Matriz de Dizimos: o centro do
+     * utilizador autenticado — de onde o MovimentoObserver deriva o
+     * paroquia_id.
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $user = Auth::user();
 
-        if ($user?->hasRole('tesoureiro_centro')) {
+        if ($user?->hasRole(['tesoureiro_centro', 'coordenador_centro'])) {
             $data['centro_id'] = $user->centro_id;
         }
 

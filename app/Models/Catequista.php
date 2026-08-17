@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,7 @@ class Catequista extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use TemIdMascarado;
 
     protected $fillable = [
         'paroquia_id',
@@ -25,6 +27,7 @@ class Catequista extends Model
         'fiel_id',
         'user_id',
         'nome_completo',
+        'data_nascimento',
         'telefone',
         'email',
         'ativo',
@@ -32,6 +35,7 @@ class Catequista extends Model
 
     protected $casts = [
         'ativo' => 'boolean',
+        'data_nascimento' => 'date',
     ];
 
     protected static function booted(): void

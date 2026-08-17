@@ -15,6 +15,10 @@ class CatequizandosPorTurmaChart extends ChartWidget
 
     protected static ?string $heading = 'Catequizandos por Turma';
 
+    protected static ?string $maxHeight = '320px';
+
+    protected int|string|array $columnSpan = 'full';
+
     public static function canView(): bool
     {
         return Auth::user()?->hasRole(self::PAPEIS_CATEQUESE) ?? false;
@@ -29,7 +33,7 @@ class CatequizandosPorTurmaChart extends ChartWidget
 
         $turmas = Turma::query()->where('status', 'ativo')
             ->when($centroId, fn ($q) => $q->where('centro_id', $centroId))
-            ->with('anoCatequetico')
+            ->with(['anoCatequetico', 'sacramentos'])
             // wherePivot() nao resolve correctamente dentro do subquery de
             // withCount() nesta versao do Filament (gera "pivot = status" em
             // vez de qualificar a tabela) — nome da coluna qualificado a
@@ -41,7 +45,15 @@ class CatequizandosPorTurmaChart extends ChartWidget
             'datasets' => [
                 ['label' => 'Catequizandos', 'data' => $turmas->pluck('catequizandos_activos')->all(), 'backgroundColor' => '#3b82f6'],
             ],
-            'labels' => $turmas->map(fn (Turma $t) => ($t->anoCatequetico?->nome ?? '—').' · '.ucfirst($t->periodo))->all(),
+            // Sacramento(s) entre parenteses no fim do label — pedido do
+            // utilizador: varias turmas podem ter o mesmo "1º Ano · Manhã",
+            // só o conjunto de sacramentos distingue umas das outras.
+            'labels' => $turmas->map(function (Turma $t) {
+                $label = ($t->anoCatequetico?->nome ?? '—').' · '.ucfirst($t->periodo);
+                $sacramentos = $t->sacramentos->pluck('nome')->implode(', ');
+
+                return $sacramentos !== '' ? "{$label} ({$sacramentos})" : $label;
+            })->all(),
         ];
     }
 

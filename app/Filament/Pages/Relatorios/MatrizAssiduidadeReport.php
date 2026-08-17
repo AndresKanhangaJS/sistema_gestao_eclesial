@@ -18,13 +18,13 @@ class MatrizAssiduidadeReport extends Page
 
     protected static ?string $navigationLabel = 'Matriz de Assiduidade';
 
-    protected static ?string $title = 'Relatório — Matriz de Assiduidade do Dízimo';
+    protected static ?string $title = 'Matriz de Assiduidade do Dízimo';
 
     protected static string $view = 'filament.pages.relatorios.matriz-assiduidade';
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro']) ?? false;
     }
 
     public function mount(): void

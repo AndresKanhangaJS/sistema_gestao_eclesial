@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Centro extends Model
 {
     use HasFactory;
+    use TemIdMascarado;
 
     protected $fillable = [
         'paroquia_id',

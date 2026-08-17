@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Concerns\TemExportacaoComEstado;
 use App\Filament\Resources\CatequizandoResource\Pages;
 use App\Filament\Resources\CatequizandoResource\RelationManagers\CentrosRelationManager;
 use App\Filament\Resources\CatequizandoResource\RelationManagers\InscricoesRelationManager;
@@ -9,6 +10,7 @@ use App\Models\Catequizando;
 use App\Models\Fiel;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -17,6 +19,8 @@ use Illuminate\Support\Facades\Auth;
 
 class CatequizandoResource extends Resource
 {
+    use TemExportacaoComEstado;
+
     protected static ?string $model = Catequizando::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
@@ -49,9 +53,11 @@ class CatequizandoResource extends Resource
                                     ->label('Centro')
                                     ->relationship('centro', 'nome')
                                     ->required()
+                                    ->live()
                                     ->visible(fn (string $operation) => $operation === 'create'
                                         && (Auth::user()?->hasRole(self::GESTORES_CENTRO_LIVRE) ?? false))
-                                    ->default(fn () => Auth::user()?->centro_id),
+                                    ->default(fn () => Auth::user()?->centro_id)
+                                    ->afterStateUpdated(fn (Forms\Set $set) => $set('fiel_id', null)),
                                 Forms\Components\TextInput::make('centro.nome')
                                     ->label('Centro actual')
                                     ->disabled()
@@ -60,7 +66,19 @@ class CatequizandoResource extends Resource
                                     ->helperText('Para mudar de centro, use "Transferir de Centro" no separador Centros.'),
                                 Forms\Components\Select::make('fiel_id')
                                     ->label('Fiel vinculado')
-                                    ->relationship('fiel', 'nome')
+                                    ->relationship(
+                                        'fiel',
+                                        'nome',
+                                        modifyQueryUsing: fn (Builder $query, Get $get) => $query
+                                            ->where('status', 'ativo')
+                                            ->when(
+                                                $get('centro_id'),
+                                                fn (Builder $query, $centroId) => $query->whereHas(
+                                                    'centros',
+                                                    fn (Builder $query) => $query->where('centros.id', $centroId)->whereNull('fiel_centros.data_fim')
+                                                )
+                                            ),
+                                    )
                                     ->searchable()
                                     ->preload()
                                     ->live()
@@ -69,7 +87,7 @@ class CatequizandoResource extends Resource
                                             $set('nome_completo', Fiel::find($state)?->nome);
                                         }
                                     })
-                                    ->helperText('Opcional — só se o catequizando já estiver cadastrado como Fiel. Ao seleccionar, copia o nome automaticamente (pode editar a seguir).'),
+                                    ->helperText('Opcional: só fiéis activos vinculados ao centro acima. Ao seleccionar, copia o nome automaticamente (pode editar a seguir).'),
                                 Forms\Components\TextInput::make('nome_completo')
                                     ->label('Nome Completo')
                                     ->required()
@@ -212,7 +230,13 @@ class CatequizandoResource extends Resource
                                             ->columns(2),
                                         Forms\Components\Toggle::make('pertence_grupo')
                                             ->label('Pertence a Grupo')
-                                            ->default(false),
+                                            ->default(false)
+                                            ->live(),
+                                        Forms\Components\TextInput::make('nome_grupo')
+                                            ->label('Nome do Grupo')
+                                            ->maxLength(150)
+                                            ->required()
+                                            ->visible(fn (Forms\Get $get) => $get('pertence_grupo')),
                                     ]),
                             ]),
                     ]),
@@ -265,6 +289,15 @@ class CatequizandoResource extends Resource
                         'F' => 'Feminino',
                     ]),
                 Tables\Filters\TrashedFilter::make(),
+            ])
+            ->headerActions([
+                self::accaoExportarComEstado(
+                    opcoesEstado: ['todos' => 'Todos', 'ativo' => 'Activo', 'inativo' => 'Inactivo'],
+                    estadoPorOmissao: 'ativo',
+                    rotaExcel: 'relatorios.catequizandos.excel',
+                    rotaPdf: 'relatorios.catequizandos.pdf',
+                    comAnoLectivo: true,
+                ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

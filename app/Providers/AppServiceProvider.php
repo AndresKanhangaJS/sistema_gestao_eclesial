@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Banco;
 use App\Models\CategoriaDespesa;
+use App\Models\CategoriaReceita;
 use App\Models\Centro;
 use App\Models\Fiel;
 use App\Models\Movimento;
@@ -37,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
         Centro::observe(ForcaParoquiaUtilizadorObserver::class);
         Fiel::observe(ForcaParoquiaUtilizadorObserver::class);
         CategoriaDespesa::observe(ForcaParoquiaUtilizadorObserver::class);
+        CategoriaReceita::observe(ForcaParoquiaUtilizadorObserver::class);
         Banco::observe(ForcaParoquiaUtilizadorObserver::class);
         // administrador_paroquial cria utilizadores (UserResource) presos a
         // paroquia_id — mesma protecao contra adulteracao do cliente.

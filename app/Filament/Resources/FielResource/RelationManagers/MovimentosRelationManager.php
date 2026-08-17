@@ -11,6 +11,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -26,6 +27,16 @@ class MovimentosRelationManager extends RelationManager
     protected static ?string $title = 'Movimentos';
 
     protected static ?string $recordTitleAttribute = 'id';
+
+    /**
+     * secretario_centro tem CRUD de Fieis mas nenhum acesso a Movimentos
+     * (FielPolicy vs. MovimentoPolicy) — sem isto, veria este separador
+     * mesmo sem permissao nenhuma sobre o que la esta listado.
+     */
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return Auth::user()?->can('viewAny', Movimento::class) ?? false;
+    }
 
     public function form(Form $form): Form
     {
@@ -94,7 +105,7 @@ class MovimentosRelationManager extends RelationManager
             ->modifyQueryUsing(function (Builder $query) {
                 $user = Auth::user();
 
-                if ($user?->hasRole('tesoureiro_centro')) {
+                if ($user?->hasRole(['tesoureiro_centro', 'coordenador_centro'])) {
                     $query->where('centro_id', $user->centro_id);
                 }
 

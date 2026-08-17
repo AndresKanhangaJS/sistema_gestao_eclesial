@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\EstadoInscricao;
 use App\Enums\TipoInscricao;
+use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Inscricao extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use TemIdMascarado;
 
     protected $table = 'inscricoes';
 

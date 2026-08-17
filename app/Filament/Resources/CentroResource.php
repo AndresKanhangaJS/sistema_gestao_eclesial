@@ -117,8 +117,8 @@ class CentroResource extends Resource
         $user = Auth::user();
 
         // A ParoquiaScope ja limita a paroquia; aqui reforcamos para 1 centro
-        // especifico quando o papel for tesoureiro_centro.
-        if ($user && $user->hasRole('tesoureiro_centro')) {
+        // especifico quando o papel for restrito a um unico centro.
+        if ($user && $user->hasRole(['tesoureiro_centro', 'coordenador_centro', 'secretario_centro'])) {
             $query->where('id', $user->centro_id);
         }
 

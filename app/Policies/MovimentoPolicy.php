@@ -10,8 +10,11 @@ use App\Models\User;
  * admin_geral tem acesso total via Gate::before (AppServiceProvider).
  * administrador_paroquial e tesoureiro_paroquial: CRUD dentro da paroquia +
  * conciliacao (aprovar/rejeitar) — mesmo alcance financeiro.
- * tesoureiro_centro: CRUD so no seu centro, sem conciliacao (exclusiva dos
- * dois papeis paroquiais acima).
+ * tesoureiro_centro e coordenador_centro: CRUD so no seu centro, sem
+ * conciliacao (exclusiva dos dois papeis paroquiais acima) — mesmo alcance
+ * financeiro entre os dois, coordenador_centro acumula ainda gestao de Fieis
+ * (FielPolicy).
+ * secretario_centro: nenhum acesso a Movimentos.
  * consultor: so leitura, global.
  * delete/forceDelete: nunca (CLAUDE.md: nunca DELETE fisico — usar estornos).
  */
@@ -19,9 +22,11 @@ class MovimentoPolicy
 {
     private const GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial'];
 
+    private const GESTORES_CENTRO = ['tesoureiro_centro', 'coordenador_centro'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro', 'consultor']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, ...self::GESTORES_CENTRO, 'consultor']);
     }
 
     public function view(User $user, Movimento $movimento): bool
@@ -34,7 +39,7 @@ class MovimentoPolicy
             return $movimento->paroquia_id === $user->paroquia_id;
         }
 
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(self::GESTORES_CENTRO)) {
             return $movimento->centro_id === $user->centro_id;
         }
 
@@ -43,7 +48,7 @@ class MovimentoPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, ...self::GESTORES_CENTRO]);
     }
 
     public function update(User $user, Movimento $movimento): bool
@@ -56,7 +61,7 @@ class MovimentoPolicy
             return $movimento->paroquia_id === $user->paroquia_id;
         }
 
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(self::GESTORES_CENTRO)) {
             return $movimento->centro_id === $user->centro_id;
         }
 

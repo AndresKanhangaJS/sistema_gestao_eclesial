@@ -10,16 +10,19 @@ use App\Models\User;
  * administrador_paroquial e tesoureiro_paroquial: CRUD (sem delete) dentro
  * da sua propria paroquia — mesmo alcance, so o administrador_paroquial
  * acumula tambem a gestao de utilizadores (UserPolicy).
- * tesoureiro_centro: so leitura, e apenas do seu proprio centro.
+ * tesoureiro_centro, coordenador_centro e secretario_centro: so leitura, e
+ * apenas do seu proprio centro.
  * consultor: so leitura, global.
  */
 class CentroPolicy
 {
     private const GESTORES_PAROQUIA = ['administrador_paroquial', 'tesoureiro_paroquial'];
 
+    private const PAPEIS_CENTRO = ['tesoureiro_centro', 'coordenador_centro', 'secretario_centro'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole([...self::GESTORES_PAROQUIA, 'tesoureiro_centro', 'consultor']);
+        return $user->hasRole([...self::GESTORES_PAROQUIA, ...self::PAPEIS_CENTRO, 'consultor']);
     }
 
     public function view(User $user, Centro $centro): bool
@@ -32,7 +35,7 @@ class CentroPolicy
             return $centro->paroquia_id === $user->paroquia_id;
         }
 
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(self::PAPEIS_CENTRO)) {
             return $centro->id === $user->centro_id;
         }
 

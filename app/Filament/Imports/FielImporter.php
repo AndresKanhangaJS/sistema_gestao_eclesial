@@ -10,6 +10,7 @@ use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Importacao em massa de Fieis (Modulo 3). O ficheiro so traz dados do
@@ -53,7 +54,7 @@ class FielImporter extends Importer
                 ->rules(['nullable', 'date']),
             ImportColumn::make('status')
                 ->label('Estado')
-                ->helperText('"ativo" ou "inativo" — em branco fica "ativo".')
+                ->helperText('"ativo" ou "inativo", em branco fica "ativo".')
                 ->example('ativo')
                 ->ignoreBlankState()
                 ->rules(['nullable', 'in:ativo,inativo']),
@@ -63,11 +64,27 @@ class FielImporter extends Importer
     public static function getOptionsFormComponents(): array
     {
         return [
+            // Preparado para quando tesoureiro_centro (hoje só leitura,
+            // FielPolicy::create()) ganhar permissão de importar: fica logo
+            // preso ao seu próprio centro, sem conseguir escolher outro. Por
+            // agora só administrador_paroquial/tesoureiro_paroquial (e
+            // admin_geral) chegam aqui, ambos sempre livres — mesmo padrão
+            // já usado em CatequizandoImporter/CatequistaImporter.
+            //
+            // ->disabled()+->dehydrated() (nunca ->visible(false)): campos
+            // invisíveis não entram no array $options que chega ao job da
+            // fila numa ImportAction (bug real, ver docs/modulos/
+            // catequese.md secç. 26) — disabled mantém o campo visível, só
+            // bloqueado, e dehydrated() força a inclusão do valor mesmo
+            // desactivado.
             Select::make('centro_id')
                 ->label('Centro')
                 ->helperText('Todos os fiéis importados ficam vinculados a este centro.')
                 ->options(fn () => Centro::orderBy('nome')->pluck('nome', 'id'))
-                ->required(),
+                ->required()
+                ->default(fn () => Auth::user()?->centro_id)
+                ->disabled(fn () => ! (Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial']) ?? false))
+                ->dehydrated(),
         ];
     }
 

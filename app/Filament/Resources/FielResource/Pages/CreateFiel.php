@@ -7,6 +7,7 @@ use App\Models\Fiel;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Auth;
 
 class CreateFiel extends CreateRecord
 {
@@ -28,6 +29,24 @@ class CreateFiel extends CreateRecord
                     throw $e;
                 }
             }
+        }
+    }
+
+    /**
+     * O form do Fiel nao tem nenhum campo de centro (o vinculo vive so na
+     * pivot fiel_centros, gerida pela CentrosRelationManager) — sem isto, um
+     * coordenador_centro/secretario_centro criaria fieis sem nenhum centro
+     * vinculado, apesar de estarem presos a um so centro.
+     */
+    protected function afterCreate(): void
+    {
+        $user = Auth::user();
+
+        if ($user?->hasRole(['coordenador_centro', 'secretario_centro'])) {
+            $this->record->centros()->attach($user->centro_id, [
+                'data_inicio' => now(),
+                'principal' => true,
+            ]);
         }
     }
 

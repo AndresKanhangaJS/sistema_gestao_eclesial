@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Concerns\TemIdMascarado;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -20,7 +21,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable;
+    use HasFactory, HasRoles, Notifiable, TemIdMascarado;
 
     /**
      * O 'ativo' por omissao da coluna existe na BD, mas uma instancia recem
@@ -81,6 +82,8 @@ class User extends Authenticatable implements FilamentUser
             'administrador_paroquial',
             'tesoureiro_paroquial',
             'tesoureiro_centro',
+            'coordenador_centro',
+            'secretario_centro',
             'consultor',
             'coordenador_catequese_paroquia',
             'coordenador_catequese_centro',

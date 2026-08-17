@@ -6,6 +6,7 @@ use App\Enums\EstadoInscricaoTurma;
 use App\Models\Turma;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -54,11 +55,7 @@ class InscricaoTurmaRelationManager extends RelationManager
                     ->formatStateUsing(fn (string $state) => ucfirst($state)),
                 Tables\Columns\BadgeColumn::make('pivot.status')
                     ->label('Estado')
-                    ->formatStateUsing(fn (EstadoInscricaoTurma $state) => match ($state) {
-                        EstadoInscricaoTurma::Ativo => 'Activo',
-                        EstadoInscricaoTurma::Transferido => 'Transferido',
-                        EstadoInscricaoTurma::Removido => 'Removido',
-                    })
+                    ->formatStateUsing(fn (EstadoInscricaoTurma $state) => $state->label())
                     ->colors([
                         'success' => EstadoInscricaoTurma::Ativo->value,
                         'gray' => EstadoInscricaoTurma::Transferido->value,
@@ -101,9 +98,7 @@ class InscricaoTurmaRelationManager extends RelationManager
                                         // completo com o da inscricao — nao so parcialmente
                                         // (docs/modulos/catequese.md secc. 12).
                                         ->filter(fn (Turma $turma) => $turma->sacramentos()->pluck('sacramentos.id')->sort()->values()->all() === $sacramentoIds)
-                                        ->mapWithKeys(fn (Turma $turma) => [
-                                            $turma->id => "{$turma->anoCatequetico?->nome} — {$turma->periodo} ({$turma->hora_inicio->format('H:i')}–{$turma->hora_fim->format('H:i')})",
-                                        ])
+                                        ->mapWithKeys(fn (Turma $turma) => [$turma->id => $turma->descricaoCurta()])
                                 )
                                 ->helperText(blank($inscricao->ano_catequetico_id) || $inscricao->sacramentos()->count() === 0
                                     ? 'Preencha o Ano de Catequese e o(s) Sacramento(s) na ficha de inscrição antes de colocar em turma.'
@@ -164,7 +159,7 @@ class InscricaoTurmaRelationManager extends RelationManager
                     ->color('success')
                     ->visible(fn ($record) => self::podeGerir() && $record->pivot->status === EstadoInscricaoTurma::Removido)
                     ->disabled(fn ($record) => $record->vagas_bloqueadas)
-                    ->tooltip(fn ($record) => $record->vagas_bloqueadas ? 'Vagas bloqueadas — desbloqueie ou aumente o limite primeiro.' : null)
+                    ->tooltip(fn ($record) => $record->vagas_bloqueadas ? 'Vagas bloqueadas: desbloqueie ou aumente o limite primeiro.' : null)
                     ->requiresConfirmation()
                     ->form([
                         Forms\Components\DatePicker::make('data_movimento')
@@ -178,12 +173,19 @@ class InscricaoTurmaRelationManager extends RelationManager
                         $inscricao = $this->getOwnerRecord();
                         $activaNoutraTurma = $inscricao->turmaAtiva;
 
+                        // Ao contrario da colocacao inicial (que ja filtra os catequizandos
+                        // activos noutra turma da lista de opcoes), a reactivacao parte de
+                        // uma linha "removido" ja escolhida — por isso o bloqueio tem de
+                        // acontecer aqui, nao antes: nunca transferir em silencio, informar
+                        // e deixar o utilizador remover da outra turma primeiro.
                         if ($activaNoutraTurma && $activaNoutraTurma->turma_id !== $record->id) {
-                            $activaNoutraTurma->update([
-                                'status' => EstadoInscricaoTurma::Transferido->value,
-                                'data_fim' => $data['data_movimento'],
-                                'motivo' => $data['motivo'] ?? 'Reactivação nesta turma.',
-                            ]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Não é possível reactivar')
+                                ->body("Este catequizando já está activo na turma \"{$activaNoutraTurma->turma->descricaoCurta()}\". Remova-o de lá primeiro.")
+                                ->send();
+
+                            return;
                         }
 
                         $inscricao->turmas()->attach($record->id, [

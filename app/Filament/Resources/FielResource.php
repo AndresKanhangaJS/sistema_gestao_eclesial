@@ -131,9 +131,9 @@ class FielResource extends Resource
 
         $user = Auth::user();
 
-        // A ParoquiaScope ja limita a paroquia; para tesoureiro_centro reforcamos
-        // para so mostrar fieis com vinculo activo ao seu proprio centro.
-        if ($user && $user->hasRole('tesoureiro_centro')) {
+        // A ParoquiaScope ja limita a paroquia; para papeis presos a um so
+        // centro reforcamos para so mostrar fieis com vinculo activo la.
+        if ($user && $user->hasRole(['tesoureiro_centro', 'coordenador_centro', 'secretario_centro'])) {
             $query->whereHas(
                 'centros',
                 fn (Builder $q) => $q->where('centros.id', $user->centro_id)->whereNull('fiel_centros.data_fim')

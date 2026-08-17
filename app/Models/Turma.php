@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ class Turma extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use TemIdMascarado;
 
     protected $fillable = [
         'paroquia_id',
@@ -101,5 +103,15 @@ class Turma extends Model
     public function estaCheia(): bool
     {
         return $this->vagas_maximo !== null && $this->vagasOcupadas() >= $this->vagas_maximo;
+    }
+
+    /**
+     * Label curto para identificar a turma em selects e mensagens (ex.:
+     * "1º Ano, manhã (09:00–10:00)"), reutilizado onde for preciso apontar
+     * para uma turma especifica fora da propria tabela.
+     */
+    public function descricaoCurta(): string
+    {
+        return "{$this->anoCatequetico?->nome}, {$this->periodo} ({$this->hora_inicio->format('H:i')}–{$this->hora_fim->format('H:i')})";
     }
 }

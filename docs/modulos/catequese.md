@@ -120,6 +120,7 @@ Suporta transferência entre centros (decisão do utilizador: histórico complet
 | `madrinha_nome`, `madrinha_telefone` | |
 | `paroquia_transferencia`, `ano_transferencia` | |
 | `pertence_grupo` | boolean default false |
+| `nome_grupo` | string(150) nullable | só relevante quando `pertence_grupo=true` |
 
 ## 6. Catequistas (mínimo — a expandir)
 
@@ -131,6 +132,7 @@ Suporta transferência entre centros (decisão do utilizador: histórico complet
 | `fiel_id` | FK nullable, restrictOnDelete |
 | `user_id` | FK → users, nullable — se tiver login próprio |
 | `nome_completo` | string(150) |
+| `data_nascimento` | date, nullable |
 | `telefone`, `email` | nullable |
 | `ativo` | boolean default true |
 | SoftDeletes | |
@@ -280,3 +282,126 @@ Mesma classe de risco existe, em teoria, nas unique keys equivalentes de `catequ
 Mesma classe de bug do `CatequizandosPorTurmaChart` (secç. 13, item 2): o filtro "Estado" de `CatequizandosRelationManager` usava `wherePivot('status', ...)` dentro do `query()` do `SelectFilter`, e `wherePivot()` não resolve correctamente nesse contexto (gera `pivot = status` em vez de qualificar a tabela) — mesma causa raiz, mesma correcção (`where('inscricao_turma.status', ...)`).
 
 Verifiquei todos os outros usos de `wherePivot()`/`withCount()` no código da Catequese: os restantes (ex.: `Turma::vagasOcupadas()`, o cálculo de `$idsJaAtivos` em "Adicionar Catequizando") são chamadas directas sobre uma relação nova, fora de um `query()` de filtro ou de `withCount()` — esses funcionam normalmente (já testados em rondas anteriores) e não precisam de correcção.
+
+## 17. Nome do Grupo (2026-08-15)
+
+Campo `nome_grupo` (migration `2026_08_15_000001`, string(150) nullable, coluna nova em `dados_religiosos`) — pedido do utilizador: quando o catequizando pertence a um grupo, deve poder escrever o nome desse grupo. No formulário (`CatequizandoResource`, separador "Dados Religiosos"), o `Toggle` `pertence_grupo` ganhou `->live()` e o `TextInput` `nome_grupo` só aparece (`->visible()`) quando o toggle está activo.
+
+## 18. Colocação em massa, bloqueio de reactivação e exportações (2026-08-16)
+
+Três pedidos do utilizador sobre o fluxo de colocação em turma:
+
+1. **"Adicionar Catequizando" passou a aceitar vários de uma vez** (`CatequizandosRelationManager`, Turma): o `Select` do formulário ganhou `->multiple()` (campo `catequizando_ids`, array), e a acção passou a percorrer a lista em loop, criando/reaproveitando a inscrição de cada um.
+2. **A lista de opções deixou de incluir quem já está activo noutra turma** — antes só excluía quem já estava activo *nesta* turma (`$idsJaAtivos`); agora exclui quem está activo em **qualquer** turma do mesmo ano lectivo (`Inscricao::whereHas('turmaAtiva')`). Antes, escolher alguém já colocado noutro lado transferia-o em silêncio; isso deixou de ser possível a partir daqui — mover alguém de turma continua a ser feito exclusivamente por "Trocar de Turma" (`InscricaoTurmaRelationManager`, que já excluía a turma actual das opções). A acção mantém, mesmo assim, uma verificação defensiva no momento de gravar (contra uma colocação feita por outra pessoa enquanto o formulário estava aberto): se acontecer, esse catequizando é ignorado e listado num aviso, nunca transferido às escondidas.
+3. **"Reactivar" (nos dois RelationManagers, `CatequizandosRelationManager` e `InscricaoTurmaRelationManager`) deixou de transferir automaticamente** quando a inscrição está activa noutra turma — antes fechava essa colocação e activava a nova sem perguntar; agora bloqueia com uma notificação de erro a identificar o nome da turma onde já está activo (via `Turma::descricaoCurta()`, método novo no model), e não faz nada até o utilizador remover a colocação antiga primeiro.
+
+Também acrescentado `Turma::descricaoCurta()` (ex.: "1º Ano, manhã (09:00–10:00)"), reaproveitado no Select de "Colocar/Trocar de Turma" e nas mensagens de bloqueio acima — antes esse label estava duplicado inline com um travessão longo a separar as partes, unificado num único método.
+
+## 19. Exportação Excel/PDF com botão único e escolha de Estado (2026-08-16)
+
+Pedido do utilizador: em vez de dois botões separados ("Exportar Excel" / "Exportar PDF"), um único botão "Exportar" que agrupa as duas opções, e ao escolher qualquer uma delas abre um modal a perguntar que Estado incluir — se não escolher nada, assume o estado "activo" por omissão (excepto em Inscrições, ver abaixo). Pedido também para acrescentar a mesma exportação à lista de Catequistas, que ainda não tinha nenhuma.
+
+**`App\Filament\Concerns\TemExportacaoComEstado`** (trait nova) — constrói o botão agrupado (`Tables\Actions\ActionGroup` com duas sub-acções, "Excel" e "PDF"), cada uma com um `->form()` de um único `Select` "Estado" (opções e valor por omissão vêm de quem chama) que, ao submeter, redirecciona para a rota de exportação correspondente com `?estado=`. Não acede a `$this` directamente — quem chama passa via `parametrosRota` uma closure com o que for preciso do próprio contexto (ex.: id da turma), para funcionar tanto em Resources (`table()` estático) como em RelationManagers (`table()` de instância). Reaproveitada em 4 sítios:
+
+| Lista | Opções de Estado | Por omissão | Rotas |
+|---|---|---|---|
+| Catequizandos de uma Turma (`CatequizandosRelationManager`) | Todos / Activo / Transferido / Removido (estado da colocação em `inscricao_turma`) | Activo | `relatorios.turma-catequizandos.{excel,pdf}` |
+| Catequizandos (`CatequizandoResource`) | Todos / Activo / Inactivo | Activo | `relatorios.catequizandos.{excel,pdf}` |
+| Catequistas (`CatequistaResource`) | Todos / Activo / Inactivo | Activo | `relatorios.catequistas.{excel,pdf}` |
+| Inscrições (`InscricaoResource`) | Todos / Inscrito / Aprovado / Reprovado / Desistente / Cancelado | **Todos** — o `estado` de Inscrição não tem um valor "activo" equivalente aos outros três, por isso não filtra nada por omissão (decisão da IA, sinalizada aqui para o utilizador corrigir se preferir outro valor por omissão) | `relatorios.inscricoes.{excel,pdf}` |
+
+`EstadoInscricaoTurma` ganhou um método `label()` (Activo/Transferido/Removido), substituindo o `match` que estava duplicado em 4 sítios (`CatequizandosRelationManager`, `InscricaoTurmaRelationManager`, a view PDF da turma, e agora também a rota de exportação Excel da turma).
+
+As rotas Excel deixaram de usar `pxlrbt/filament-excel` (que não dava para combinar facilmente com um `Select` de estado dentro do próprio modal) — passaram a seguir o mesmo padrão `ArrayExport`+`Excel::download()` já usado pelos relatórios financeiros do Módulo 7. Todas as rotas (Excel e PDF, para as 4 listas) seguem o mesmo critério de RBAC das Policies do módulo (`admin_geral`, `coordenador_catequese_paroquia`, `coordenador_catequese_centro`, `secretario_catequese`, `tesoureiro_catequese`), com o mesmo reforço de `centro_id` para quem só gere/lê o seu próprio centro — mesma ressalva do Módulo 7: a rota replica o critério da Policy em vez de o reutilizar, por isso uma mudança de RBAC numa Policy do módulo tem de ser replicada manualmente aqui também.
+
+### 19.1 Ajustes pós-teste (2026-08-16, continuação)
+
+Quatro pedidos do utilizador depois de testar o fluxo de exportação:
+
+1. **Bug reproduzido ao exportar a Turma — mesma classe do `wherePivot()` das secç. 12/16**: o filtro de Estado em `/relatorios/turma/{turma}/catequizandos/{excel,pdf}` usava `$turma->inscricoes()->when(...)->wherePivot('status', $estado)`, e mesmo sendo (aparentemente) uma chamada directa sobre uma relação nova, o `wherePivot()` dentro do closure do `->when()` gerava a mesma SQL quebrada (`where \`pivot\` = status`, ignorando o valor real de `$estado`). Corrigido com o mesmo padrão já estabelecido: `where('inscricao_turma.status', $estado)`, nome da tabela qualificado directamente. Lição reforçada: `wherePivot()` não é de confiar dentro de **qualquer** closure passado a `when()`/`filter()`/etc. neste código-base — usar sempre `where('inscricao_turma.status', ...)`.
+2. **Coluna "Nº" (número de ordem)** acrescentada às 4 listas exportadas (Excel e PDF): Catequizandos de uma Turma, Catequizandos, Catequistas, Inscrições — primeira coluna, 1 a N conforme a ordem devolvida pela query.
+3. **Modal do "Exportar" reduzido para `sm`** (`->modalWidth('sm')` nas duas sub-acções, Excel e PDF, dentro de `TemExportacaoComEstado`) — só há um campo (Estado), o modal por omissão do Filament era desproporcionalmente grande.
+4. **PDF agora abre numa nova aba** — mas não via `$this->js('window.open(...)')`: os closures das acções vivem num método **estático** da trait (`accaoExportarComEstado`), por isso nunca têm `$this` ligado ao componente Livewire (uma limitação do próprio PHP, closures definidos dentro de um método estático não têm contexto de objecto, independentemente de quem chama o método) — e mesmo que tivessem, um `window.open()` disparado depois do pedido AJAX do formulário arrisca ser bloqueado pelo browser como pop-up. Solução usada: a sub-acção "PDF" já não redirecciona directamente — envia uma notificação Filament de sucesso com um botão "Abrir PDF" (`Filament\Notifications\Actions\Action` com `->url()->openUrlInNewTab()`), garantindo que a nova aba abre sempre a partir de um clique genuíno do utilizador (sem depender de heurísticas de pop-up do browser). O Excel manteve-se como redirecionamento directo (download de ficheiro não é bloqueado como pop-up, e não faz sentido pedir confirmação extra para isso).
+
+### 19.2 Filtro de Ano Lectivo nas exportações (2026-08-16, continuação)
+
+Pedido do utilizador: além do Estado, filtrar também por Ano Lectivo nos locais onde fizer sentido — o trabalho do módulo é sempre organizado por ano lectivo. `accaoExportarComEstado()` ganhou o parâmetro opcional `comAnoLectivo: true`, que acrescenta um segundo `Select` ("Ano Lectivo", opções "Todos" + `AnoLetivo` da paróquia, por omissão o ano `em_curso`) ao mesmo modal `sm`, e passa `?ano_letivo=` na rota gerada.
+
+Activo em 3 dos 4 locais — o quarto (Catequizandos de uma Turma) não se aplica, porque a turma já pertence a um único `ano_letivo_id`, filtrar de novo seria redundante:
+
+| Lista | Como filtra por ano lectivo | Porquê essa forma |
+|---|---|---|
+| Catequizandos (`CatequizandoResource`) | `whereHas('inscricoes', fn ($q) => $q->where('ano_letivo_id', ...))` | `Catequizando` não tem `ano_letivo_id` próprio — o vínculo a um ano lectivo é sempre via `Inscricao` |
+| Catequistas (`CatequistaResource`) | `whereHas('turmas', fn ($q) => $q->where('ano_letivo_id', ...))` | idem, mas via `turma_catequista`; `ano_letivo_id` vive na própria tabela `turmas` (não no pivot), por isso não há aqui o risco do bug de `wherePivot()` da secç. 19.1 |
+| Inscrições (`InscricaoResource`) | `where('ano_letivo_id', ...)` directo | `inscricoes.ano_letivo_id` é uma coluna própria |
+
+### 19.3 Nome de ficheiro descritivo ao exportar (2026-08-16, continuação)
+
+Pedido do utilizador: os ficheiros descarregados deixaram de ter nome genérico (`catequizandos.xlsx`, `inscricoes.pdf`) e passaram a incluir o que foi realmente exportado — padrão `{lista}_{ano-lectivo}_{estado}` (ex.: `inscricoes_2026-2027_todos.xlsx`), ou `{lista}_{turma}_{estado}` no caso da Turma (que não tem selector de Ano Lectivo, ver secç. 19.2).
+
+`AnoLetivo::slugParaExportacao(string $anoLetivo)` (novo método estático) converte o valor bruto de `?ano_letivo=` ("todos" ou um id) no trecho do nome do ficheiro — **armadilha encontrada e corrigida duas vezes**: `Str::slug('2026/2027')` sozinho engole a barra e dá `20262027` (ilegível, os dois anos colados); trocar a barra por `-` antes de chamar `Str::slug()` também não chega, porque o `Str::slug()` normaliza esse `-` de volta ao separador por omissão independentemente do valor pedido. A correcção final troca a barra por um **espaço** (o único carácter que o `Str::slug()` reconhece sempre como fronteira de palavra, seja qual for o separador) e pede separador `_` explicitamente — resultado "2026_2027", a pedido do utilizador (ficheiros como `inscricoes_2026_2027_todos.xlsx`).
+
+### 19.4 PDF da Turma com Sacramento(s) e Catequista(s) (2026-08-16, continuação)
+
+Pedido do utilizador: o PDF de catequizandos de uma turma (`pdfs.relatorios.turma-catequizandos`) passou a mostrar, no cabeçalho, o(s) Sacramento(s) da turma (`$turma->sacramentos`) e o(s) Catequista(s) actualmente atribuídos (`$turma->catequistas()->wherePivotNull('data_fim')->get()`, com o papel Titular/Auxiliar entre parêntesis) — `data_fim IS NULL` no pivot `turma_catequista` é o mesmo critério de "vínculo activo" já usado em `CatequistasRelationManager` (coluna "Fim" mostra "Activo" quando `null`). Só no PDF, não no Excel (não pedido).
+
+## 20. Sacramento "Perseverança" (2026-08-16, continuação)
+
+Pedido do utilizador: acrescentado um 4º sacramento de referência, `Perseverança` (`ordem` 4), a seguir a Baptismo/Comunhão/Crisma — `database/seeders/CatequeseSeeder.php` actualizado e já corrido contra a BD de desenvolvimento (`firstOrCreate`, idempotente — não duplicou nem tocou nos 3 existentes).
+
+## 21. Data de Nascimento do Catequista + cópia alargada do Fiel (2026-08-16, continuação)
+
+Pedido do utilizador: `catequistas` ganhou a coluna `data_nascimento` (migration `2026_08_16_000003`, date nullable, a seguir a `nome_completo`) — mostrada no formulário (`DatePicker`, `maxDate(now())`) e como coluna toggleable na tabela.
+
+O `Select` `fiel_id` de `CatequistaResource` já copiava `nome` para `nome_completo` ao seleccionar um Fiel (`->afterStateUpdated()`); passou a copiar também `data_nascimento`, `telefone` e `email` do Fiel para os campos correspondentes do Catequista, na mesma acção — tudo continua editável a seguir, a cópia é só um ponto de partida.
+
+## 22. Auditoria de filtragem por Centro (2026-08-16, continuação)
+
+Pedido do utilizador: verificação geral a todos os campos dependentes de Centro no módulo — sempre que se escolhe (ou já se está preso a) um Centro, os campos de Fiel/Catequista devem obedecer a esse filtro. Feita por um agente de exploração (só leitura) e corrigida a seguir. Achados e correcções:
+
+- **`CatequizandoResource`, `CatequistaResource`**: campo `fiel_id` listava todos os Fiéis da paróquia, sem filtrar pelo Centro escolhido — corrigido com `relationship(..., modifyQueryUsing: ...)` filtrando `status=ativo` e `whereHas('centros', ...)` pelo `centro_id` (mesmo padrão já usado em `MovimentoResource::fiel_id`). `centro_id` ganhou `->live()` nos dois Resources (sem isso, os campos dependentes nunca reagiam à escolha) e `afterStateUpdated` a limpar `fiel_id` ao trocar de centro.
+- **`CatequistaResource`**: campo `user_id` (login vinculado) não filtrava por paróquia nenhuma — `User` não tem `ParoquiaScope` própria. Corrigido a filtrar por `paroquia_id` (do campo, ou do utilizador autenticado). `paroquia_id` também ganhou `->live()`.
+- **`InscricaoResource`**: campo `catequista_id` não usava o `scopePorCentro()` já existente no próprio Resource (o campo `catequizando_id` ao lado já usava) — corrigido a reaproveitar o mesmo método.
+- **`TurmaResource\RelationManagers\CatequistasRelationManager`** e **`CatequistaResource\RelationManagers\TurmasRelationManager`**: a acção "Anexar" (`AttachAction::getRecordSelect()`) não filtrava por centro — corrigido com `->recordSelectOptionsQuery(...)`. No lado do Catequista → Turmas, `centro_id` do catequista é nullable ("centro principal"); só filtra quando definido, para não esconder todas as turmas de um catequista sem centro fixo (paróquia inteira).
+- **`TurmaResource`**: `centro_id` ganhou `->live()` por consistência/pré-requisito, apesar de o próprio form da Turma não ter hoje nenhum campo dependente directo.
+
+Sem achados em `getEloquentQuery()` dos Resources (todos já restringiam correctamente por centro) nem em `MatrizDizimos`/`MatrizAssiduidadeReport` (já bem implementados via `FiltraMatrizDizimos`).
+
+Testado em `tests/Feature/CatequeseFiltroPorCentroTest.php` (3 casos: `fiel_id` do Catequizando, `fiel_id` do Catequista, `catequista_id` da Inscrição — todos confirmando que um registo de outro centro nunca aparece nas opções).
+
+## 23. Gráficos do dashboard em linha própria (2026-08-16, continuação)
+
+Mesmo pedido do utilizador que motivou o ajuste equivalente no Demonstrativo de Receitas/Despesas (`docs/modulos/04-movimentos-conciliacao.md`): os `ChartWidget` do dashboard principal (`CatequizandosPorTurmaChart`, `InscricoesPorEstadoChart`) ganharam `$columnSpan = 'full'` e `$maxHeight = '320px'`, para nunca ficarem lado a lado de forma desproporcionada — mesmo ajuste aplicado aos gráficos financeiros (`ArrecadacaoBarChart`/`PieChart`, `DespesasBarChart`/`PieChart`). Os widgets de estatística (`CatequeseEstatisticasWidget`, `EstatisticasGeraisWidget`) não foram tocados — cartões lado a lado é o layout normal desse tipo de widget, não o problema reportado.
+
+## 24. Sacramento(s) no label do gráfico "Catequizandos por Turma" (2026-08-16, continuação)
+
+Pedido do utilizador: o label de cada barra ("1º Ano · Manhã") não distinguia turmas diferentes com o mesmo ano catequético/período — passou a incluir o(s) sacramento(s) entre parênteses no fim (ex.: "1º Ano · Manhã (Baptismo, Comunhão)"), a mesma informação que já distingue turmas em `InscricaoTurmaRelationManager`/`CatequizandosRelationManager` (docs secç. 12). A query ganhou eager-load de `sacramentos` (`->with(['anoCatequetico', 'sacramentos'])`) para não gerar N+1. Nota: mesmo com sacramentos no label, ainda é possível duas turmas ficarem com o label idêntico (confirmado com dados reais: duas turmas "1º Ano · Manha (Baptismo)" distintas) — isso só acontece quando são mesmo a mesma combinação ano/período/sacramentos (ex. turmas paralelas na mesma faixa horária), o que está fora do que foi pedido.
+
+## 25. Importação em massa de Catequizandos e Catequistas (2026-08-16, continuação)
+
+Pedido do utilizador: "fechar a sessão com chave de ouro" — importação em massa via Excel/CSV, mesmo padrão já usado para Fiéis (`App\Filament\Imports\FielImporter`, Módulo 3). Dois `Importer` novos, espelhados campo a campo:
+
+- **`CatequizandoImporter`**: colunas `nome_completo`/`data_nascimento`/`sexo` obrigatórias (`data_nascimento` é `NOT NULL` na BD, ao contrário do Fiel), mais `nome_pai`, `nome_mae`, `numero_identificacao`, `telefone`, `email`, `residencia`, `status`. `afterCreate()` grava também a primeira linha em `catequizando_centros` (mesmo que `CreateCatequizando::afterCreate()`).
+- **`CatequistaImporter`**: `nome_completo` obrigatório, mais `data_nascimento`, `telefone`, `email`, `ativo` (texto "ativo"/"inativo" no ficheiro, convertido para booleano — ver armadilha na secç. 26).
+
+Em ambos, `centro_id` nunca vem do ficheiro — escolhido uma vez no modal de importação (`getOptionsFormComponents()`) e aplicado a todas as linhas, com `paroquia_id` derivado desse centro e validado contra a paróquia de quem importa (`beforeCreate()`, mesma defesa "nunca confiar em dados externos" já usada no `FielImporter`). Botão "Importar" nas listagens (`ListCatequizandos`/`ListCatequistas`), visível com a mesma Policy do `CreateAction` (`can('create', ...)`).
+
+**Centro pré-seleccionado e bloqueado para quem já está preso a um centro**: pedido de seguida pelo utilizador — `coordenador_catequese_centro`/`secretario_catequese`/`tesoureiro_catequese` veem logo o seu próprio centro no modal de importação e não conseguem escolher outro; só `admin_geral`/`coordenador_catequese_paroquia` (paróquia inteira) escolhem livremente. Mesmo critério `GESTORES_CENTRO_LIVRE` já usado nos Resources da Catequese. Ver armadilha séria na secç. 26 sobre a primeira tentativa desta implementação.
+
+Testado em `tests/Feature/CatequizandoImporterTest.php`, `tests/Feature/CatequistaImporterTest.php` (chamada directa ao Importer, mesmo padrão do `FielImporterTest`) e `tests/Feature/ImportCentroPreSelecionadoTest.php` (pré-selecção/bloqueio do centro).
+
+## 26. Bug crítico: importação "não fazia nada" — `visible(false)` esconde o valor do formulário de opções (2026-08-16, continuação)
+
+Bug reportado pelo utilizador depois da secç. 25: "carrego o ficheiro, diz que vai processar em segundo plano, depois nada, os dados não persistem". Diagnóstico via `docker compose logs worker` + inspecção directa da tabela `imports`/`failed_import_rows` (`Filament\Actions\Imports\Models\Import::latest()->first()->failedRows`) — todas as linhas falhavam com "Centro inválido para a paróquia de quem está a importar.", mesmo com um centro válido escolhido.
+
+**Causa raiz**: a primeira versão da funcionalidade da secç. 25 escondia o campo `centro_id` do modal de opções com `->visible(false)` (mais `->default()`) para o pré-seleccionar e bloquear. Este padrão funciona num formulário normal de Resource (Create/Edit), mas **não** num `ImportAction`: `Filament\Actions\Concerns\CanImportRecords` constrói o array `$options` enviado ao job da fila a partir de `$form->getState()` (`array_except($data, ['file', 'columnMap'])`), e o `getState()` de uma acção **não inclui campos invisíveis** — ao contrário do que já se via nos forms de `CatequizandoResource`/`CatequistaResource`/`MovimentoResource` (onde a combinação visible(false)+default() sempre funcionou, incl. reforçada por `mutateFormDataBeforeCreate`). O resultado: `$this->options['centro_id']` chegava vazio a cada linha, `(int) (null ?? 0)` dava `0`, e a validação contra a paróquia falhava sempre — em silêncio, sem nenhum erro visível na UI (só visível ao abrir o registo de `Import` e ver `failed_import_rows`).
+
+**Correcção**: trocado `->visible(false)` por `->disabled(...)` (mantém o campo visível, só bloqueado — mostra ao utilizador qual o centro que vai ser usado) **+ `->dehydrated()`** explícito, porque campos desactivados também são excluídos do `getState()` por omissão. Aplicado a `CatequizandoImporter` e `CatequistaImporter`.
+
+**Bug secundário encontrado na mesma investigação**: os jobs `Filament\Notifications\DatabaseNotification` (usados pela notificação de "importação concluída") falhavam sempre com `Table 'sge_db.notifications' doesn't exist` — a tabela `notifications` (canal `database` do Laravel) nunca tinha sido criada, porque a única notificação do projecto até agora (`ComprovativoPendenteNotification`) só usa o canal `mail`. Corrigido com a migration `2026_08_16_000004_create_notifications_table` (schema padrão do Laravel: `id` uuid, `type`, `notifiable_type`/`notifiable_id`, `data`, `read_at`, timestamps). Sem esta tabela, mesmo depois de corrigido o bug do `centro_id`, a notificação de conclusão continuaria a falhar em silêncio — o utilizador via "vai processar em segundo plano" e nunca mais nada, exactamente o sintoma reportado.
+
+**Lição para o resto do código**: `assertActionDataSet()` (usado em `ImportCentroPreSelecionadoTest`) só verifica o estado do formulário montado no browser — **não** apanha este bug, porque o valor está lá até ao momento de `getState()` filtrar campos invisíveis na acção real. A correcção só foi confirmada com um teste que sobe mesmo um CSV através da acção real (`tests/Feature/ImportViaAcaoRealTest.php`, `QUEUE_CONNECTION=sync` em `phpunit.xml` corre o job na hora) e verifica o registo criado na BD — esse teste teria apanhado o bug original, os anteriores não apanhavam.
+
+**Terceiro bug, encontrado ao confirmar a correcção do segundo**: mesmo depois da migration `2026_08_16_000004_create_notifications_table`, o utilizador continuou a não ver a mensagem de conclusão — mesmo numa importação de Catequistas 100% bem sucedida (4/4). Verificado directamente na BD: a notificação **estava** a ser gravada correctamente na tabela `notifications` (`Filament\Notifications\DatabaseNotification`, sem nenhum `failed_jobs` novo). O problema real: o painel Filament (`AdminPanelProvider`) nunca tinha `->databaseNotifications()` activado — sem isso não existe **nenhuma superfície na UI** (o "sino" no topo do painel) a mostrar essas notificações, por mais que a tabela esteja correctamente preenchida. Corrigido em `app/Providers/Filament/AdminPanelProvider.php`.
+
+**`FielImporter` preparado para o mesmo padrão de centro bloqueado**: pedido do utilizador ("também poderemos ter o coordenador do centro") — `getOptionsFormComponents()` ganhou o mesmo `->default()`+`->disabled()`+`->dehydrated()` de `CatequizandoImporter`/`CatequistaImporter`, condicionado a `['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial']` (papéis livres actuais). Sem efeito prático agora — `FielPolicy::create()` continua a não incluir `tesoureiro_centro` (decisão explícita do utilizador de não mexer na Policy agora), fica só pronto para o dia em que esse papel ganhar permissão de importar.

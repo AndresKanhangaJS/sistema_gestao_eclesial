@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ class Fiel extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use TemIdMascarado;
 
     protected $table = 'fieis';
 

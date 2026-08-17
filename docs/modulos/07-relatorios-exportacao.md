@@ -15,7 +15,8 @@ Nenhuma tabela própria. Lê de `movimentos`, `fieis`, `fiel_centros`, `centros`
 | Service | Calcula | Usado por |
 |---|---|---|
 | `MatrizDizimosService` | Matriz fiel × 12 meses + segmentação de assiduidade | Página interactiva (Módulo 5) e relatório `MatrizAssiduidadeReport` + rotas de export |
-| `DemonstrativoArrecadacaoService` | Totais de receitas (dízimo/ofertório/campanha) aprovadas, por mês e por tipo, num ano | Página `DemonstrativoArrecadacao`, widgets do dashboard, rotas de export |
+| `DemonstrativoArrecadacaoService` | Totais de receitas aprovadas, por mês e por categoria, num ano — Dízimo e Ofertório são categorias fixas do sistema, seguidas por cada `CategoriaReceita` activa (Casamentos, Baptizados, ...) e um resíduo "Outras Contribuições (sem categoria)" (2026-08-16, pedido do cliente: "nesse relatório devem vir todas as categorias de receitas, não apenas as fixas do sistema", mesmo espírito do `DemonstrativoDespesasService`) | Página `DemonstrativoArrecadacao` ("Demonstrativo Unificado de Receitas (Arrecadação)"), widgets do dashboard, rotas de export |
+| `DemonstrativoDespesasService` | Totais de despesas (`tipo=despesa_centro`) aprovadas, por mês e por `CategoriaDespesa`, num ano — categorias dinâmicas por paróquia, ao contrário dos 3 tipos fixos das receitas | Página `DemonstrativoDespesas`, widgets `DespesasBarChart`/`DespesasPieChart`, rotas de export |
 | `BalancoReceitasDespesasService` | Receitas − Despesas = Saldo por mês, só movimentos aprovados | Página `BalancoReceitasDespesas` + rotas de export |
 | `FieisPorSituacaoService` | Segmentação de fiéis por assiduidade do dízimo num ano (mesmos 4 segmentos), independente do centro | Página `FieisPorSituacao` + rotas de export |
 
@@ -27,7 +28,7 @@ Cada página controla o acesso via `canAccess()` estático (sem Policy dedicada,
 
 | Página | Papéis com acesso |
 |---|---|
-| `DemonstrativoArrecadacao`, `BalancoReceitasDespesas`, `FieisPorSituacao` | `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro`, `consultor` |
+| `DemonstrativoArrecadacao`, `DemonstrativoDespesas`, `BalancoReceitasDespesas`, `FieisPorSituacao` | `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro`, `consultor` |
 | `RastreabilidadeBancaria`, `AuditoriaRepassesInterCentro` | `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `consultor` (**sem** `tesoureiro_centro` — conciliação/rastreabilidade bancária é exclusiva dos gestores de paróquia) |
 | `MatrizAssiduidadeReport` | mesmo alcance da Matriz de Dízimos interactiva: `admin_geral`, `administrador_paroquial`, `tesoureiro_paroquial`, `tesoureiro_centro` |
 | `LogAuditoria` | **só `admin_geral`** |
@@ -38,7 +39,7 @@ As rotas web de exportação (`routes/web.php`, prefixo `/relatorios`) repetem o
 
 Todas em `app/Filament/Pages/Relatorios/`, `navigationGroup: Relatórios`:
 
-- **`DemonstrativoArrecadacao`**, **`BalancoReceitasDespesas`**, **`FieisPorSituacao`**: consultam os Services acima; `tesoureiro_centro` tem o `centro_id` sempre forçado ao seu próprio (nunca lê da query string).
+- **`DemonstrativoArrecadacao`**, **`DemonstrativoDespesas`**, **`BalancoReceitasDespesas`**, **`FieisPorSituacao`**: consultam os Services acima; `tesoureiro_centro` tem o `centro_id` sempre forçado ao seu próprio (nunca lê da query string).
 - **`RastreabilidadeBancaria`**: tabela (`InteractsWithTable`) de `Movimento::query()->whereNotNull('banco_id')`, com filtro por banco e `ExportAction` (Excel via `pxlrbt/filament-excel`).
 - **`AuditoriaRepassesInterCentro`**: consulta `FielCentro::withoutGlobalScopes()->whereNotNull('motivo_transferencia')` — só mostra transferências de facto (não o vínculo inicial de um fiel a um centro). Comentário no código explica a decisão: "não há transferência financeira entre centros no schema (cada movimento pertence a 1 só centro) — reaproveita o histórico `fiel_centros`, que é a única movimentação inter-centro real". Coluna `centro_origem` calculada dinamicamente (`centroOrigem()`), procurando a linha anterior do mesmo fiel cujo `data_fim` coincide com o `data_inicio` da linha actual.
 - **`MatrizAssiduidadeReport`**: usa a mesma trait `FiltraMatrizDizimos` e o mesmo `MatrizDizimosService::calcular()` da página interactiva do Módulo 5 — garante que o relatório nunca diverge da matriz ao vivo.
@@ -46,11 +47,12 @@ Todas em `app/Filament/Pages/Relatorios/`, `navigationGroup: Relatórios`:
 
 ## 6. Widgets (dashboard)
 
-- **`EstatisticasGeraisWidget`** (`StatsOverviewWidget`, `sort = -10`): 4 cards — total de fiéis activos (restrito ao centro para `tesoureiro_centro`), dízimos/ofertórios/outras contribuições do ano corrente (via `DemonstrativoArrecadacaoService`).
-- **`ArrecadacaoBarChart`**: gráfico de barras por mês, 3 séries (dízimo/ofertório/campanha).
-- **`ArrecadacaoPieChart`**: gráfico de pizza, proporção por tipo de receita no ano.
+- **`EstatisticasGeraisWidget`** (`StatsOverviewWidget`, `sort = -10`): 4 cards — total de fiéis activos (restrito ao centro para `tesoureiro_centro`), dízimos/ofertórios/outras contribuições do ano corrente (via `DemonstrativoArrecadacaoService`; "Outras Contribuições" soma tudo o que não é dízimo/ofertório, já que deixou de ser uma única categoria).
+- **`ArrecadacaoBarChart`**: gráfico de barras por mês, uma série por categoria de receita (dinâmico — Dízimo, Ofertório e cada `CategoriaReceita` activa, mesma paleta cíclica do `DespesasBarChart`).
+- **`ArrecadacaoPieChart`**: gráfico de pizza, proporção por categoria de receita no ano (mesmo padrão dinâmico).
+- **`DespesasBarChart`** / **`DespesasPieChart`**: equivalentes do lado das despesas, uma série por `CategoriaDespesa` activa (cor atribuída ciclicamente a partir de uma paleta fixa, porque o número de categorias é dinâmico).
 
-Ambos os gráficos restringem a `centroId` do `tesoureiro_centro` da mesma forma que o widget de estatísticas.
+Todos restringem a `centroId` do `tesoureiro_centro` da mesma forma que o widget de estatísticas.
 
 ## 7. Exportação — infraestrutura
 

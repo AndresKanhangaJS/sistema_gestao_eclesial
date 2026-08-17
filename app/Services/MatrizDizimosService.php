@@ -27,8 +27,8 @@ class MatrizDizimosService
     /**
      * Resolve a lista de centros a consultar a partir do papel do utilizador
      * e de um centro_id pedido explicitamente (ex.: query string das rotas
-     * de exportacao PDF/Excel). tesoureiro_centro fica sempre preso ao seu
-     * proprio centro; os restantes veem "Todos os centros" que conseguem ver
+     * de exportacao PDF/Excel). tesoureiro_centro e coordenador_centro ficam
+     * sempre presos ao seu proprio centro; os restantes veem "Todos os centros" que conseguem ver
      * quando nao pedem nenhum em concreto — ou pedem um que nao existe/nao
      * lhes pertence, caso em que a ParoquiaScope do Centro faz o exists()
      * falhar e cai-se de volta para "Todos" em vez de rebentar.
@@ -37,7 +37,7 @@ class MatrizDizimosService
      */
     public static function centrosPermitidos(User $user, int|string|null $centroIdSolicitado): array
     {
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(['tesoureiro_centro', 'coordenador_centro'])) {
             return [$user->centro_id];
         }
 

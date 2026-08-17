@@ -13,9 +13,9 @@ class DemonstrativoArrecadacao extends Page
 
     protected static ?string $navigationGroup = 'Relatórios';
 
-    protected static ?string $navigationLabel = 'Demonstrativo de Arrecadação';
+    protected static ?string $navigationLabel = 'Demonstrativo de Receitas (Arrecadação)';
 
-    protected static ?string $title = 'Relatório — Demonstrativo Unificado de Arrecadação';
+    protected static ?string $title = 'Demonstrativo Unificado de Receitas (Arrecadação)';
 
     protected static string $view = 'filament.pages.relatorios.demonstrativo-arrecadacao';
 
@@ -23,7 +23,7 @@ class DemonstrativoArrecadacao extends Page
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'consultor']) ?? false;
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']) ?? false;
     }
 
     public function mount(): void
@@ -42,7 +42,7 @@ class DemonstrativoArrecadacao extends Page
     public function dados(): array
     {
         $user = Auth::user();
-        $centroId = $user?->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $centroId = $user?->hasRole(['tesoureiro_centro', 'coordenador_centro']) ? $user->centro_id : null;
 
         return DemonstrativoArrecadacaoService::calcular($this->ano, $centroId);
     }

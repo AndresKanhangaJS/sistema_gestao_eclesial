@@ -12,13 +12,15 @@ use Illuminate\Support\Str;
  * Relatorio de Matriz de Assiduidade (Modulo 7): resolucao de que centros
  * consultar consoante o papel do utilizador, e o filtro por nome do fiel.
  *
- * tesoureiro_centro nunca escolhe centro — fica sempre preso ao seu, sem
- * selector. Os restantes papeis (admin_geral, administrador_paroquial,
- * tesoureiro_paroquial) veem por defeito "Todos os centros" (centroId nulo)
- * e podem restringir a um centro especifico.
+ * tesoureiro_centro e coordenador_centro nunca escolhem centro — ficam
+ * sempre presos ao seu, sem selector. Os restantes papeis (admin_geral,
+ * administrador_paroquial, tesoureiro_paroquial) veem por defeito "Todos os
+ * centros" (centroId nulo) e podem restringir a um centro especifico.
  */
 trait FiltraMatrizDizimos
 {
+    private const PAPEIS_CENTRO = ['tesoureiro_centro', 'coordenador_centro'];
+
     public ?int $centroId = null;
 
     public ?string $nomeFiel = null;
@@ -31,14 +33,14 @@ trait FiltraMatrizDizimos
 
         $user = Auth::user();
 
-        $this->centroId = $user->hasRole('tesoureiro_centro') ? $user->centro_id : null;
+        $this->centroId = $user->hasRole(self::PAPEIS_CENTRO) ? $user->centro_id : null;
     }
 
     public function getCentrosDisponiveis(): array
     {
         $user = Auth::user();
 
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(self::PAPEIS_CENTRO)) {
             return Centro::where('id', $user->centro_id)->pluck('nome', 'id')->all();
         }
 
@@ -47,7 +49,7 @@ trait FiltraMatrizDizimos
 
     public function mostrarFiltroCentro(): bool
     {
-        return ! (Auth::user()?->hasRole('tesoureiro_centro') ?? false);
+        return ! (Auth::user()?->hasRole(self::PAPEIS_CENTRO) ?? false);
     }
 
     public function getAnosDisponiveis(): array
@@ -69,7 +71,7 @@ trait FiltraMatrizDizimos
     {
         $user = Auth::user();
 
-        if ($user->hasRole('tesoureiro_centro')) {
+        if ($user->hasRole(self::PAPEIS_CENTRO)) {
             return [$user->centro_id];
         }
 

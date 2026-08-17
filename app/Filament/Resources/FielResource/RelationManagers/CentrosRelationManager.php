@@ -9,6 +9,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Actions\AttachAction;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -32,7 +33,28 @@ class CentrosRelationManager extends RelationManager
 
     private static function podeEscrever(): bool
     {
+        return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'coordenador_centro', 'secretario_centro']) ?? false;
+    }
+
+    /**
+     * coordenador_centro/secretario_centro estao presos ao seu proprio
+     * centro (FielPolicy) — sem isto, o AttachAction deixava-os vincular um
+     * fiel do seu centro a QUALQUER outro centro da paroquia.
+     */
+    private static function centroLivre(): bool
+    {
         return Auth::user()?->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial']) ?? false;
+    }
+
+    /**
+     * Transferir um fiel para OUTRO centro e uma decisao inter-centro — fora
+     * do alcance de "CRUD de Fieis do meu centro" de coordenador_centro e
+     * secretario_centro, por isso fica reservado aos mesmos papeis que ja
+     * viam esta accao antes deles existirem.
+     */
+    private static function podeTransferir(): bool
+    {
+        return self::centroLivre();
     }
 
     public function form(Form $form): Form
@@ -65,6 +87,9 @@ class CentrosRelationManager extends RelationManager
             ->headerActions([
                 AttachAction::make()
                     ->visible(fn () => self::podeEscrever())
+                    ->recordSelectOptionsQuery(fn (Builder $query) => self::centroLivre()
+                        ? $query
+                        : $query->where('id', Auth::user()?->centro_id))
                     ->form(fn (AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Forms\Components\DatePicker::make('data_inicio')
@@ -80,7 +105,7 @@ class CentrosRelationManager extends RelationManager
                 Tables\Actions\Action::make('transferir')
                     ->label('Transferir')
                     ->icon('heroicon-o-arrow-path')
-                    ->visible(fn ($record) => self::podeEscrever() && $record->pivot->data_fim === null)
+                    ->visible(fn ($record) => self::podeTransferir() && $record->pivot->data_fim === null)
                     ->form(function ($record) {
                         // O novo centro tem de pertencer a mesma paroquia do
                         // fiel (fixa desde a criacao) — independente do papel

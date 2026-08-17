@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\EstadoInscricao;
 use App\Enums\TipoInscricao;
+use App\Filament\Concerns\TemExportacaoComEstado;
 use App\Filament\Resources\InscricaoResource\Pages;
 use App\Filament\Resources\InscricaoResource\RelationManagers\InscricaoTurmaRelationManager;
 use App\Models\Inscricao;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Auth;
 
 class InscricaoResource extends Resource
 {
+    use TemExportacaoComEstado;
+
     protected static ?string $model = Inscricao::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
@@ -109,13 +112,17 @@ class InscricaoResource extends Resource
                             ->multiple()
                             ->preload()
                             ->required()
-                            ->helperText('O conjunto exacto tem de bater certo com a turma escolhida — ex.: "Baptismo e Comunhão" não entra numa turma só de "Baptismo".'),
+                            ->helperText('O conjunto exacto tem de bater certo com a turma escolhida, ex.: "Baptismo e Comunhão" não entra numa turma só de "Baptismo".'),
                         Forms\Components\Select::make('catequista_id')
                             ->label('Catequista Responsável')
-                            ->relationship('catequista', 'nome_completo')
+                            ->relationship(
+                                'catequista',
+                                'nome_completo',
+                                modifyQueryUsing: fn (Builder $query, Get $get) => self::scopePorCentro($query, 'centro_id', $get),
+                            )
                             ->searchable()
                             ->preload()
-                            ->helperText('Quem atendeu/processou a ficha — não é necessariamente quem lecciona a turma.'),
+                            ->helperText('Quem atendeu/processou a ficha (não é necessariamente quem lecciona a turma).'),
                         Forms\Components\Select::make('tipo')
                             ->label('Tipo')
                             ->options([
@@ -223,6 +230,22 @@ class InscricaoResource extends Resource
                     ->label('Ano Lectivo')
                     ->relationship('anoLetivo', 'nome'),
                 Tables\Filters\TrashedFilter::make(),
+            ])
+            ->headerActions([
+                self::accaoExportarComEstado(
+                    opcoesEstado: [
+                        'todos' => 'Todos',
+                        EstadoInscricao::Inscrito->value => 'Inscrito',
+                        EstadoInscricao::Aprovado->value => 'Aprovado',
+                        EstadoInscricao::Reprovado->value => 'Reprovado',
+                        EstadoInscricao::Desistente->value => 'Desistente',
+                        EstadoInscricao::Cancelado->value => 'Cancelado',
+                    ],
+                    estadoPorOmissao: 'todos',
+                    rotaExcel: 'relatorios.inscricoes.excel',
+                    rotaPdf: 'relatorios.inscricoes.pdf',
+                    comAnoLectivo: true,
+                ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

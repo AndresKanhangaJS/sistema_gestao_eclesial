@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\TemIdMascarado;
+use App\Scopes\ParoquiaScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class CategoriaReceita extends Model
+{
+    use HasFactory;
+    use SoftDeletes;
+    use TemIdMascarado;
+
+    protected $table = 'categorias_receita';
+
+    protected $fillable = [
+        'paroquia_id',
+        'nome',
+        'descricao',
+        'status',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new ParoquiaScope);
+    }
+
+    public function paroquia(): BelongsTo
+    {
+        return $this->belongsTo(Paroquia::class);
+    }
+
+    public function movimentos(): HasMany
+    {
+        return $this->hasMany(Movimento::class);
+    }
+}

@@ -19,7 +19,7 @@
     <header>
         <h1>{{ $titulo }}</h1>
         <div class="meta">
-            {{ optional($paroquia ?? null)->nome ?? 'SGE — Sistema de Gestão Eclesial' }}
+            {{ optional($paroquia ?? null)->nome ?? 'SGE: Sistema de Gestão Eclesial' }}
             &middot; Emitido em {{ now()->format('d/m/Y H:i') }}
         </div>
     </header>

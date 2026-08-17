@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Auth;
  * a partir do utilizador autenticado, excepto para admin_geral (unico papel
  * que pode escolher a paroquia livremente).
  *
- * Aplicado a Centro, Fiel, CategoriaDespesa e Banco (ver AppServiceProvider).
+ * Aplicado a Centro, Fiel, CategoriaDespesa, CategoriaReceita e Banco (ver
+ * AppServiceProvider).
  */
 class ForcaParoquiaUtilizadorObserver
 {

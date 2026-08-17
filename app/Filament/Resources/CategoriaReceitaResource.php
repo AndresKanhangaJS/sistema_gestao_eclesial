@@ -1,0 +1,105 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\CategoriaReceitaResource\Pages;
+use App\Models\CategoriaReceita;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+
+class CategoriaReceitaResource extends Resource
+{
+    protected static ?string $model = CategoriaReceita::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-tag';
+
+    protected static ?string $navigationGroup = 'Financeiro';
+
+    protected static ?string $modelLabel = 'Categoria de Receita';
+
+    protected static ?string $pluralModelLabel = 'Categorias de Receita';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make()
+                    ->schema([
+                        Forms\Components\Hidden::make('paroquia_id')
+                            ->default(fn () => Auth::user()?->paroquia_id),
+                        Forms\Components\TextInput::make('nome')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('descricao')
+                            ->label('Descrição')
+                            ->columnSpanFull(),
+                        Forms\Components\Select::make('status')
+                            ->label('Estado')
+                            ->options([
+                                'ativo' => 'Activo',
+                                'inativo' => 'Inactivo',
+                            ])
+                            ->required()
+                            ->default('ativo'),
+                    ]),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('nome')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('descricao')
+                    ->label('Descrição')
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('movimentos_count')
+                    ->label('Receitas lançadas')
+                    ->counts('movimentos'),
+                Tables\Columns\IconColumn::make('status')
+                    ->label('Estado')
+                    ->boolean()
+                    ->getStateUsing(fn ($record) => $record->status === 'ativo'),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'ativo' => 'Activo',
+                        'inativo' => 'Inactivo',
+                    ]),
+                Tables\Filters\TrashedFilter::make(),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListCategoriaReceitas::route('/'),
+            'create' => Pages\CreateCategoriaReceita::route('/create'),
+            'edit' => Pages\EditCategoriaReceita::route('/{record}/edit'),
+        ];
+    }
+}

@@ -44,6 +44,7 @@ class TurmaResource extends Resource
                             ->label('Centro')
                             ->relationship('centro', 'nome')
                             ->required()
+                            ->live()
                             ->visible(fn (string $operation) => $operation === 'create'
                                 && (Auth::user()?->hasRole(self::GESTORES_CENTRO_LIVRE) ?? false))
                             ->default(fn () => Auth::user()?->centro_id),
@@ -102,7 +103,7 @@ class TurmaResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->gte('vagas_minimo')
-                            ->helperText('Atingir o limite não bloqueia sozinho — use "Bloquear Vagas" no separador Catequizandos quando quiser.'),
+                            ->helperText('Atingir o limite não bloqueia sozinho. Use "Bloquear Vagas" no separador Catequizandos quando quiser.'),
                         Forms\Components\Toggle::make('vagas_bloqueadas')
                             ->label('Vagas Bloqueadas')
                             ->helperText('Enquanto activo, não é possível adicionar mais catequizandos a esta turma.')

@@ -29,7 +29,7 @@ class AuditoriaRepassesInterCentro extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Repasses Inter-Centro';
 
-    protected static ?string $title = 'Relatório — Auditoria de Repasses Inter-Centro';
+    protected static ?string $title = 'Auditoria de Repasses Inter-Centro';
 
     protected static string $view = 'filament.pages.relatorios.auditoria-repasses-inter-centro';
 

@@ -11,15 +11,16 @@ class EditMovimento extends EditRecord
     protected static string $resource = MovimentoResource::class;
 
     /**
-     * O campo centro_id fica oculto para tesoureiro_centro — impede-se aqui,
-     * no servidor, que consiga mover um movimento para outro centro
-     * adulterando o formulario (o mesmo motivo do fix em CreateMovimento).
+     * O campo centro_id fica oculto para tesoureiro_centro e coordenador_centro
+     * — impede-se aqui, no servidor, que consigam mover um movimento para
+     * outro centro adulterando o formulario (o mesmo motivo do fix em
+     * CreateMovimento).
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $user = Auth::user();
 
-        if ($user?->hasRole('tesoureiro_centro')) {
+        if ($user?->hasRole(['tesoureiro_centro', 'coordenador_centro'])) {
             $data['centro_id'] = $user->centro_id;
         }
 

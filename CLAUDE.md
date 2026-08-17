@@ -14,9 +14,11 @@ Laravel 12 | Filament v3 | Livewire | Tailwind | MySQL 8.0 | Redis | Docker
 
 ## Perfis RBAC (hierarquia)
 - admin_geral → acesso total ao sistema; CRUD de Paróquias e regista qualquer papel, incl. administrador_paroquial
-- administrador_paroquial → faz tudo o que está ligado à sua própria paróquia: financeiro completo + conciliação bancária (paridade com tesoureiro_paroquial), regista utilizadores (tesoureiro_paroquial/tesoureiro_centro) e vincula-os aos centros da paróquia — nunca atribui admin_geral/consultor/outro administrador_paroquial
+- administrador_paroquial → faz tudo o que está ligado à sua própria paróquia: financeiro completo + conciliação bancária (paridade com tesoureiro_paroquial), regista utilizadores (tesoureiro_paroquial/tesoureiro_centro/coordenador_centro/secretario_centro) e vincula-os aos centros da paróquia — nunca atribui admin_geral/consultor/outro administrador_paroquial
 - tesoureiro_paroquial → financeiro completo + conciliação bancária, sem gerir utilizadores
-- tesoureiro_centro → apenas o seu centro, sem conciliação
+- tesoureiro_centro → apenas o seu centro, sem conciliação, sem gestão de Fiéis
+- coordenador_centro → apenas o seu centro: mesmo alcance financeiro do tesoureiro_centro (CRUD de Movimentos, sem conciliação) + CRUD completo de Fiéis do centro
+- secretario_centro → apenas o seu centro: só CRUD de Fiéis, sem qualquer acesso a Movimentos/valores/relatórios
 - consultor → read-only global
 
 ## Convenções

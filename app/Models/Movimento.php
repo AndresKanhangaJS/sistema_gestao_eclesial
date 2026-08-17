@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\StatusConciliacao;
 use App\Enums\TipoMovimento;
+use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Movimento extends Model
     use HasFactory;
     use SoftDeletes;
     use LogsActivity;
+    use TemIdMascarado;
 
     protected $fillable = [
         'paroquia_id',
@@ -27,6 +29,7 @@ class Movimento extends Model
         'banco_id',
         'tipo',
         'categoria_despesa_id',
+        'categoria_receita_id',
         'valor',
         'ano_competencia',
         'mes_competencia',
@@ -92,5 +95,10 @@ class Movimento extends Model
     public function categoriaDespesa(): BelongsTo
     {
         return $this->belongsTo(CategoriaDespesa::class);
+    }
+
+    public function categoriaReceita(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaReceita::class);
     }
 }
