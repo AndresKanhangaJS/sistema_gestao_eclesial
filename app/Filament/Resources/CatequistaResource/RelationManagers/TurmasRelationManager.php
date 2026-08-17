@@ -95,19 +95,21 @@ class TurmasRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
-                Tables\Actions\Action::make('encerrarVinculo')
-                    ->label('Encerrar')
-                    ->icon('heroicon-o-x-circle')
-                    ->visible(fn () => self::podeGerir())
-                    ->form([
-                        Forms\Components\DatePicker::make('data_fim')
-                            ->label('Data de Fim')
-                            ->required()
-                            ->default(now()),
-                    ])
-                    ->action(fn (array $data, $record) => $record->pivot->update($data)),
-                Tables\Actions\DetachAction::make()
-                    ->visible(fn () => self::podeGerir()),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('encerrarVinculo')
+                        ->label('Encerrar')
+                        ->icon('heroicon-o-x-circle')
+                        ->visible(fn () => self::podeGerir())
+                        ->form([
+                            Forms\Components\DatePicker::make('data_fim')
+                                ->label('Data de Fim')
+                                ->required()
+                                ->default(now()),
+                        ])
+                        ->action(fn (array $data, $record) => $record->pivot->update($data)),
+                    Tables\Actions\DetachAction::make()
+                        ->visible(fn () => self::podeGerir()),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

@@ -19,9 +19,16 @@ class CreateUser extends CreateRecord
         return $data;
     }
 
+    /**
+     * A senha de uma conta nova e sempre escolhida por quem regista, nunca
+     * pelo proprio utilizador — obriga-o a trocar por uma pessoal no
+     * primeiro login (ForcarAlteracaoSenha).
+     */
     protected function afterCreate(): void
     {
         $this->record->syncRoles([$this->role]);
+
+        $this->record->forceFill(['deve_alterar_senha' => true])->save();
     }
 
     protected function getCreatedNotificationTitle(): ?string

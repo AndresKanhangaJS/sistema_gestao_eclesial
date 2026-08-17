@@ -53,4 +53,21 @@ class NovasResourcesAcessoTest extends TestCase
             ->get('/admin/bancos')
             ->assertOk();
     }
+
+    /**
+     * Pedido do cliente: o grupo de navegação do Filament Shield (só o menu
+     * lateral) deve dizer "Papéis e Permissões", não o nome técnico do
+     * pacote — ver lang/vendor/filament-shield/pt_PT/filament-shield.php.
+     */
+    public function test_menu_do_shield_mostra_papeis_e_permissoes_em_vez_do_nome_do_pacote(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin_geral');
+
+        $response = $this->actingAs($admin)->get('/admin/shield/roles');
+
+        $response->assertOk();
+        $response->assertSee('Papéis e Permissões');
+        $response->assertDontSee('Filament Shield');
+    }
 }

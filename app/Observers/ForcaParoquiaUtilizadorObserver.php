@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,8 +14,8 @@ use Illuminate\Support\Facades\Auth;
  * a partir do utilizador autenticado, excepto para admin_geral (unico papel
  * que pode escolher a paroquia livremente).
  *
- * Aplicado a Centro, Fiel, CategoriaDespesa, CategoriaReceita e Banco (ver
- * AppServiceProvider).
+ * Aplicado a Centro, Fiel, CategoriaDespesa, CategoriaReceita, Banco e User
+ * (ver AppServiceProvider).
  */
 class ForcaParoquiaUtilizadorObserver
 {
@@ -28,6 +29,14 @@ class ForcaParoquiaUtilizadorObserver
 
         if ($user->paroquia_id !== null) {
             $model->paroquia_id = $user->paroquia_id;
+        }
+
+        // coordenador_centro so gere utilizadores do seu proprio centro
+        // (UserPolicy/UserResource::papeisAtribuiveis() ja so lhe dao papeis
+        // presos a centro) — mesmo reforco, agora para centro_id, e so faz
+        // sentido para o model User.
+        if ($model instanceof User && $user->hasRole('coordenador_centro')) {
+            $model->centro_id = $user->centro_id;
         }
     }
 }

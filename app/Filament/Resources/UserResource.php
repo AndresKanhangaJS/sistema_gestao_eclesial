@@ -7,11 +7,13 @@ use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 /**
  * Gestao de utilizadores e atribuicao de papel/paroquia/centro.
@@ -26,6 +28,8 @@ use Illuminate\Support\Facades\Auth;
  * utilizadores a coordenador_catequese_paroquia (ver
  * docs/modulos/catequese.md, pendencia de RBAC) (ver
  * papeisAtribuiveis()/papelPermitido(), reforcado em UserPolicy).
+ * coordenador_centro (2026-08-17) gere so tesoureiro_centro/secretario_centro
+ * do seu proprio centro — pode criar/editar/redefinir senha, nunca apagar.
  */
 class UserResource extends Resource
 {
@@ -72,14 +76,25 @@ class UserResource extends Resource
      * escolhe livremente; administrador_paroquial so pode criar/editar
      * tesoureiro_paroquial, tesoureiro_centro, coordenador_centro,
      * secretario_centro, coordenador_catequese_paroquia e
-     * secretario_catequese na sua propria paroquia.
+     * secretario_catequese na sua propria paroquia; coordenador_centro
+     * (2026-08-17) so pode criar/editar tesoureiro_centro/secretario_centro
+     * do seu proprio centro — nunca outro coordenador_centro.
      *
      * @return array<string, string>
      */
     public static function papeisAtribuiveis(): array
     {
-        if (Auth::user()?->hasRole('admin_geral')) {
+        $user = Auth::user();
+
+        if ($user?->hasRole('admin_geral')) {
             return self::PAPEIS;
+        }
+
+        if ($user?->hasRole('coordenador_centro')) {
+            return [
+                'tesoureiro_centro' => self::PAPEIS['tesoureiro_centro'],
+                'secretario_centro' => self::PAPEIS['secretario_centro'],
+            ];
         }
 
         return [
@@ -182,7 +197,14 @@ class UserResource extends Resource
                                         },
                                     )
                                     ->required(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_CENTRO, true))
-                                    ->visible(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_CENTRO, true)),
+                                    ->visible(fn (Get $get) => in_array($get('role'), self::PAPEIS_COM_CENTRO, true))
+                                    // coordenador_centro so cria/edita gente do seu proprio
+                                    // centro (papeisAtribuiveis() ja so lhe da papeis presos a
+                                    // centro) — fica sempre preso ao seu, sem selector; reforcado
+                                    // no servidor por ForcaParoquiaUtilizadorObserver.
+                                    ->default(fn () => Auth::user()?->hasRole('coordenador_centro') ? Auth::user()->centro_id : null)
+                                    ->disabled(fn () => Auth::user()?->hasRole('coordenador_centro') ?? false)
+                                    ->dehydrated(),
                             ]),
                     ]),
             ]);
@@ -238,7 +260,31 @@ class UserResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\Action::make('redefinirSenha')
+                        ->label('Redefinir Senha')
+                        ->icon('heroicon-o-key')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalDescription('Gera uma senha temporária nova. O utilizador terá de a trocar por uma pessoal no próximo login.')
+                        ->visible(fn (User $record) => Auth::user()?->can('resetPassword', $record) ?? false)
+                        ->action(function (User $record): void {
+                            $senhaTemporaria = Str::password(12);
+
+                            $record->forceFill([
+                                'password' => $senhaTemporaria,
+                                'deve_alterar_senha' => true,
+                            ])->save();
+
+                            Notification::make()
+                                ->title('Senha redefinida')
+                                ->body("Senha temporária de {$record->name}: {$senhaTemporaria} — partilhe-a com o utilizador, vai ter de a trocar no próximo login.")
+                                ->warning()
+                                ->persistent()
+                                ->send();
+                        }),
+                ]),
             ])
             ->bulkActions([
                 //
@@ -256,6 +302,10 @@ class UserResource extends Resource
         // notificacoes) — o isolamento e feito aqui, so para esta Resource.
         if ($user && $user->hasRole('administrador_paroquial')) {
             $query->where('paroquia_id', $user->paroquia_id);
+        }
+
+        if ($user && $user->hasRole('coordenador_centro')) {
+            $query->where('centro_id', $user->centro_id);
         }
 
         return $query;

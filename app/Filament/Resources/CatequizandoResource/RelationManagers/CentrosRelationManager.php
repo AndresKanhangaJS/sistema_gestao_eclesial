@@ -65,91 +65,93 @@ class CentrosRelationManager extends RelationManager
             ])
             ->headerActions([])
             ->actions([
-                Tables\Actions\Action::make('transferir')
-                    ->label('Transferir de Centro')
-                    ->icon('heroicon-o-arrow-path')
-                    ->visible(fn ($record) => self::podeGerir() && $record->pivot->data_fim === null)
-                    ->form(function ($record) {
-                        // O novo centro tem de pertencer a mesma paroquia do
-                        // catequizando (fixa desde a criacao) — independente
-                        // do papel de quem transfere, incl. admin_geral, que
-                        // nao tem ParoquiaScope aplicado e por isso via aqui
-                        // todos os centros sem este filtro explicito.
-                        $paroquiaId = $this->getOwnerRecord()->paroquia_id;
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('transferir')
+                        ->label('Transferir de Centro')
+                        ->icon('heroicon-o-arrow-path')
+                        ->visible(fn ($record) => self::podeGerir() && $record->pivot->data_fim === null)
+                        ->form(function ($record) {
+                            // O novo centro tem de pertencer a mesma paroquia do
+                            // catequizando (fixa desde a criacao) — independente
+                            // do papel de quem transfere, incl. admin_geral, que
+                            // nao tem ParoquiaScope aplicado e por isso via aqui
+                            // todos os centros sem este filtro explicito.
+                            $paroquiaId = $this->getOwnerRecord()->paroquia_id;
 
-                        return [
-                            Forms\Components\Select::make('novo_centro_id')
-                                ->label('Novo centro')
-                                ->options(
-                                    fn () => Centro::withoutGlobalScopes()
-                                        ->where('paroquia_id', $paroquiaId)
-                                        ->where('id', '!=', $record->id)
-                                        ->pluck('nome', 'id')
-                                )
-                                ->required(),
-                            Forms\Components\DatePicker::make('data_transferencia')
-                                ->label('Data da Transferência')
-                                ->required()
-                                ->default(now()),
-                            Forms\Components\Textarea::make('motivo')
-                                ->label('Motivo da transferência')
-                                ->required(),
-                        ];
-                    })
-                    ->action(function (array $data, $record): void {
-                        $catequizando = $this->getOwnerRecord();
+                            return [
+                                Forms\Components\Select::make('novo_centro_id')
+                                    ->label('Novo centro')
+                                    ->options(
+                                        fn () => Centro::withoutGlobalScopes()
+                                            ->where('paroquia_id', $paroquiaId)
+                                            ->where('id', '!=', $record->id)
+                                            ->pluck('nome', 'id')
+                                    )
+                                    ->required(),
+                                Forms\Components\DatePicker::make('data_transferencia')
+                                    ->label('Data da Transferência')
+                                    ->required()
+                                    ->default(now()),
+                                Forms\Components\Textarea::make('motivo')
+                                    ->label('Motivo da transferência')
+                                    ->required(),
+                            ];
+                        })
+                        ->action(function (array $data, $record): void {
+                            $catequizando = $this->getOwnerRecord();
 
-                        $novoCentro = Centro::withoutGlobalScopes()->find($data['novo_centro_id']);
+                            $novoCentro = Centro::withoutGlobalScopes()->find($data['novo_centro_id']);
 
-                        if (! $novoCentro || $novoCentro->paroquia_id !== $catequizando->paroquia_id) {
-                            abort(403, 'O novo centro tem de pertencer à mesma paróquia do catequizando.');
-                        }
+                            if (! $novoCentro || $novoCentro->paroquia_id !== $catequizando->paroquia_id) {
+                                abort(403, 'O novo centro tem de pertencer à mesma paróquia do catequizando.');
+                            }
 
-                        $centroAntigoId = $record->id;
+                            $centroAntigoId = $record->id;
 
-                        // Fecha a linha activa e abre uma nova no historico de centros
-                        $record->pivot->update(['data_fim' => $data['data_transferencia']]);
+                            // Fecha a linha activa e abre uma nova no historico de centros
+                            $record->pivot->update(['data_fim' => $data['data_transferencia']]);
 
-                        $catequizando->centros()->attach($data['novo_centro_id'], [
-                            'data_inicio' => $data['data_transferencia'],
-                            'motivo_transferencia' => $data['motivo'],
-                        ]);
+                            $catequizando->centros()->attach($data['novo_centro_id'], [
+                                'data_inicio' => $data['data_transferencia'],
+                                'motivo_transferencia' => $data['motivo'],
+                            ]);
 
-                        // catequizandos.centro_id denormalizado — actualiza para reflectir o centro corrente
-                        $catequizando->update(['centro_id' => $novoCentro->id]);
+                            // catequizandos.centro_id denormalizado — actualiza para reflectir o centro corrente
+                            $catequizando->update(['centro_id' => $novoCentro->id]);
 
-                        // Mudanca de centro implica sempre mudanca de turma (secc. 7.1): fecha
-                        // qualquer colocacao activa em turmas do centro antigo e actualiza o
-                        // centro_id das inscricoes afectadas — a colocacao na turma do novo
-                        // centro fica para uma accao dedicada em InscricaoTurmaRelationManager.
-                        $catequizando->inscricoes()
-                            ->whereHas('turmaAtiva', fn ($q) => $q->whereHas('turma', fn ($q2) => $q2->where('centro_id', $centroAntigoId)))
-                            ->get()
-                            ->each(function ($inscricao) use ($data, $novoCentro) {
-                                $inscricao->turmaAtiva?->update([
-                                    'status' => 'transferido',
-                                    'data_fim' => $data['data_transferencia'],
-                                    'motivo' => 'Mudança de centro do catequizando: '.$data['motivo'],
-                                ]);
+                            // Mudanca de centro implica sempre mudanca de turma (secc. 7.1): fecha
+                            // qualquer colocacao activa em turmas do centro antigo e actualiza o
+                            // centro_id das inscricoes afectadas — a colocacao na turma do novo
+                            // centro fica para uma accao dedicada em InscricaoTurmaRelationManager.
+                            $catequizando->inscricoes()
+                                ->whereHas('turmaAtiva', fn ($q) => $q->whereHas('turma', fn ($q2) => $q2->where('centro_id', $centroAntigoId)))
+                                ->get()
+                                ->each(function ($inscricao) use ($data, $novoCentro) {
+                                    $inscricao->turmaAtiva?->update([
+                                        'status' => 'transferido',
+                                        'data_fim' => $data['data_transferencia'],
+                                        'motivo' => 'Mudança de centro do catequizando: '.$data['motivo'],
+                                    ]);
 
-                                $inscricao->update(['centro_id' => $novoCentro->id]);
-                            });
-                    }),
-                Tables\Actions\Action::make('editarVinculo')
-                    ->label('Editar')
-                    ->icon('heroicon-o-pencil')
-                    ->visible(fn () => self::podeGerir())
-                    ->form([
-                        Forms\Components\DatePicker::make('data_fim')
-                            ->label('Data de Fim'),
-                        Forms\Components\Textarea::make('motivo_transferencia')
-                            ->label('Motivo da Transferência'),
-                    ])
-                    ->fillForm(fn ($record): array => [
-                        'data_fim' => $record->pivot->data_fim,
-                        'motivo_transferencia' => $record->pivot->motivo_transferencia,
-                    ])
-                    ->action(fn (array $data, $record) => $record->pivot->update($data)),
+                                    $inscricao->update(['centro_id' => $novoCentro->id]);
+                                });
+                        }),
+                    Tables\Actions\Action::make('editarVinculo')
+                        ->label('Editar')
+                        ->icon('heroicon-o-pencil')
+                        ->visible(fn () => self::podeGerir())
+                        ->form([
+                            Forms\Components\DatePicker::make('data_fim')
+                                ->label('Data de Fim'),
+                            Forms\Components\Textarea::make('motivo_transferencia')
+                                ->label('Motivo da Transferência'),
+                        ])
+                        ->fillForm(fn ($record): array => [
+                            'data_fim' => $record->pivot->data_fim,
+                            'motivo_transferencia' => $record->pivot->motivo_transferencia,
+                        ])
+                        ->action(fn (array $data, $record) => $record->pivot->update($data)),
+                ]),
             ])
             ->bulkActions([]);
     }

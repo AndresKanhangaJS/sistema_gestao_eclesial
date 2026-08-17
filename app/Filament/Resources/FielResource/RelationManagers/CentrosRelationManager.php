@@ -102,74 +102,76 @@ class CentrosRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
-                Tables\Actions\Action::make('transferir')
-                    ->label('Transferir')
-                    ->icon('heroicon-o-arrow-path')
-                    ->visible(fn ($record) => self::podeTransferir() && $record->pivot->data_fim === null)
-                    ->form(function ($record) {
-                        // O novo centro tem de pertencer a mesma paroquia do
-                        // fiel (fixa desde a criacao) — independente do papel
-                        // de quem transfere, incl. admin_geral, que nao tem
-                        // ParoquiaScope aplicado e por isso via aqui todos os
-                        // centros sem este filtro explicito.
-                        $paroquiaId = $this->getOwnerRecord()->paroquia_id;
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('transferir')
+                        ->label('Transferir')
+                        ->icon('heroicon-o-arrow-path')
+                        ->visible(fn ($record) => self::podeTransferir() && $record->pivot->data_fim === null)
+                        ->form(function ($record) {
+                            // O novo centro tem de pertencer a mesma paroquia do
+                            // fiel (fixa desde a criacao) — independente do papel
+                            // de quem transfere, incl. admin_geral, que nao tem
+                            // ParoquiaScope aplicado e por isso via aqui todos os
+                            // centros sem este filtro explicito.
+                            $paroquiaId = $this->getOwnerRecord()->paroquia_id;
 
-                        return [
-                            Forms\Components\Select::make('novo_centro_id')
-                                ->label('Novo centro')
-                                ->options(
-                                    fn () => Centro::withoutGlobalScopes()
-                                        ->where('paroquia_id', $paroquiaId)
-                                        ->where('id', '!=', $record->id)
-                                        ->pluck('nome', 'id')
-                                )
-                                ->required(),
-                            Forms\Components\DatePicker::make('data_transferencia')
-                                ->label('Data da Transferência')
-                                ->required()
-                                ->default(now()),
-                            Forms\Components\Textarea::make('motivo')
-                                ->label('Motivo da transferência')
-                                ->required(),
-                        ];
-                    })
-                    ->action(function (array $data, $record): void {
-                        $fiel = $this->getOwnerRecord();
+                            return [
+                                Forms\Components\Select::make('novo_centro_id')
+                                    ->label('Novo centro')
+                                    ->options(
+                                        fn () => Centro::withoutGlobalScopes()
+                                            ->where('paroquia_id', $paroquiaId)
+                                            ->where('id', '!=', $record->id)
+                                            ->pluck('nome', 'id')
+                                    )
+                                    ->required(),
+                                Forms\Components\DatePicker::make('data_transferencia')
+                                    ->label('Data da Transferência')
+                                    ->required()
+                                    ->default(now()),
+                                Forms\Components\Textarea::make('motivo')
+                                    ->label('Motivo da transferência')
+                                    ->required(),
+                            ];
+                        })
+                        ->action(function (array $data, $record): void {
+                            $fiel = $this->getOwnerRecord();
 
-                        $novoCentro = Centro::withoutGlobalScopes()->find($data['novo_centro_id']);
+                            $novoCentro = Centro::withoutGlobalScopes()->find($data['novo_centro_id']);
 
-                        if (! $novoCentro || $novoCentro->paroquia_id !== $fiel->paroquia_id) {
-                            abort(403, 'O novo centro tem de pertencer à mesma paróquia do fiel.');
-                        }
+                            if (! $novoCentro || $novoCentro->paroquia_id !== $fiel->paroquia_id) {
+                                abort(403, 'O novo centro tem de pertencer à mesma paróquia do fiel.');
+                            }
 
-                        $record->pivot->update(['data_fim' => $data['data_transferencia']]);
+                            $record->pivot->update(['data_fim' => $data['data_transferencia']]);
 
-                        $fiel->centros()->attach($data['novo_centro_id'], [
-                            'data_inicio' => $data['data_transferencia'],
-                            'principal' => $record->pivot->principal,
-                            'motivo_transferencia' => $data['motivo'],
-                        ]);
-                    }),
-                Tables\Actions\Action::make('editarVinculo')
-                    ->label('Editar')
-                    ->icon('heroicon-o-pencil')
-                    ->visible(fn () => self::podeEscrever())
-                    ->form([
-                        Forms\Components\DatePicker::make('data_fim')
-                            ->label('Data de Fim'),
-                        Forms\Components\Toggle::make('principal')
-                            ->label('Principal'),
-                        Forms\Components\Textarea::make('motivo_transferencia')
-                            ->label('Motivo da Transferência'),
-                    ])
-                    ->fillForm(fn ($record): array => [
-                        'data_fim' => $record->pivot->data_fim,
-                        'principal' => (bool) $record->pivot->principal,
-                        'motivo_transferencia' => $record->pivot->motivo_transferencia,
-                    ])
-                    ->action(fn (array $data, $record) => $record->pivot->update($data)),
-                Tables\Actions\DetachAction::make()
-                    ->visible(fn () => self::podeEscrever()),
+                            $fiel->centros()->attach($data['novo_centro_id'], [
+                                'data_inicio' => $data['data_transferencia'],
+                                'principal' => $record->pivot->principal,
+                                'motivo_transferencia' => $data['motivo'],
+                            ]);
+                        }),
+                    Tables\Actions\Action::make('editarVinculo')
+                        ->label('Editar')
+                        ->icon('heroicon-o-pencil')
+                        ->visible(fn () => self::podeEscrever())
+                        ->form([
+                            Forms\Components\DatePicker::make('data_fim')
+                                ->label('Data de Fim'),
+                            Forms\Components\Toggle::make('principal')
+                                ->label('Principal'),
+                            Forms\Components\Textarea::make('motivo_transferencia')
+                                ->label('Motivo da Transferência'),
+                        ])
+                        ->fillForm(fn ($record): array => [
+                            'data_fim' => $record->pivot->data_fim,
+                            'principal' => (bool) $record->pivot->principal,
+                            'motivo_transferencia' => $record->pivot->motivo_transferencia,
+                        ])
+                        ->action(fn (array $data, $record) => $record->pivot->update($data)),
+                    Tables\Actions\DetachAction::make()
+                        ->visible(fn () => self::podeEscrever()),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

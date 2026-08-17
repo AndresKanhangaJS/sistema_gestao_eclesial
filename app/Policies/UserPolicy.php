@@ -12,14 +12,17 @@ use App\Models\User;
  * secretario_catequese — nunca admin_geral, consultor, outro
  * administrador_paroquial, nem (por agora)
  * coordenador_catequese_centro/tesoureiro_catequese (ver
- * docs/modulos/catequese.md, pendencia de RBAC). A lista de papeis
- * atribuiveis na criacao/edicao vive em
+ * docs/modulos/catequese.md, pendencia de RBAC).
+ * coordenador_centro (2026-08-17) gere utilizadores do seu proprio centro,
+ * mas so tesoureiro_centro/secretario_centro — nunca outro coordenador_centro
+ * nem papeis de catequese, que ficam fora do seu alcance.
+ * A lista de papeis atribuiveis na criacao/edicao vive em
  * UserResource::papeisAtribuiveis()/papelPermitido().
  * Nenhum outro papel tem qualquer acesso aqui.
  */
 class UserPolicy
 {
-    private const PAPEIS_GERIVEIS = [
+    private const PAPEIS_GERIVEIS_ADMIN_PAROQUIAL = [
         'tesoureiro_paroquial',
         'tesoureiro_centro',
         'coordenador_centro',
@@ -28,9 +31,16 @@ class UserPolicy
         'secretario_catequese',
     ];
 
+    private const PAPEIS_GERIVEIS_COORDENADOR_CENTRO = [
+        'tesoureiro_centro',
+        'secretario_centro',
+    ];
+
+    private const GESTORES = ['administrador_paroquial', 'coordenador_centro'];
+
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('administrador_paroquial');
+        return $user->hasRole(self::GESTORES);
     }
 
     public function view(User $user, User $model): bool
@@ -40,7 +50,7 @@ class UserPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('administrador_paroquial');
+        return $user->hasRole(self::GESTORES);
     }
 
     public function update(User $user, User $model): bool
@@ -48,11 +58,28 @@ class UserPolicy
         return $this->podeGerir($user, $model);
     }
 
+    /**
+     * Redefinir a senha de outro utilizador (accao dedicada na tabela) exige
+     * a mesma autorizacao que editá-lo por completo.
+     */
+    public function resetPassword(User $user, User $model): bool
+    {
+        return $this->podeGerir($user, $model);
+    }
+
     private function podeGerir(User $user, User $model): bool
     {
-        return $user->hasRole('administrador_paroquial')
-            && $model->paroquia_id === $user->paroquia_id
-            && $model->hasAnyRole(self::PAPEIS_GERIVEIS);
+        if ($user->hasRole('administrador_paroquial')) {
+            return $model->paroquia_id === $user->paroquia_id
+                && $model->hasAnyRole(self::PAPEIS_GERIVEIS_ADMIN_PAROQUIAL);
+        }
+
+        if ($user->hasRole('coordenador_centro')) {
+            return $model->centro_id === $user->centro_id
+                && $model->hasAnyRole(self::PAPEIS_GERIVEIS_COORDENADOR_CENTRO);
+        }
+
+        return false;
     }
 
     /**
