@@ -3,8 +3,8 @@
 @section('conteudo')
     <p><strong>Turma:</strong> {{ $turma->descricaoCurta() }}</p>
     <p><strong>Centro:</strong> {{ $turma->centro->nome }}</p>
-    <p><strong>Sacramento(s):</strong> {{ $sacramentos->pluck('nome')->implode(', ') ?: '—' }}</p>
-    <p><strong>Catequista(s):</strong> {{ $catequistas->map(fn ($catequista) => $catequista->nome_completo.' ('.($catequista->pivot->papel === 'titular' ? 'Titular' : 'Auxiliar').')')->implode(', ') ?: '—' }}</p>
+    <p><strong>Sacramento(s):</strong> {{ $sacramentos->pluck('nome')->implode(', ') ?: '-' }}</p>
+    <p><strong>Catequista(s):</strong> {{ $catequistas->map(fn ($catequista) => $catequista->nome_completo.' ('.($catequista->pivot->papel === 'titular' ? 'Titular' : 'Auxiliar').')')->implode(', ') ?: '-' }}</p>
 
     <table>
         <thead>

@@ -21,7 +21,7 @@
                     <td>{{ $catequizando->centro->nome }}</td>
                     <td>{{ $catequizando->data_nascimento->format('d/m/Y') }}</td>
                     <td>{{ $catequizando->sexo === 'M' ? 'Masculino' : 'Feminino' }}</td>
-                    <td>{{ $catequizando->telefone ?? '—' }}</td>
+                    <td>{{ $catequizando->telefone ?? '-' }}</td>
                     <td>{{ $catequizando->status === 'ativo' ? 'Activo' : 'Inactivo' }}</td>
                 </tr>
             @endforeach

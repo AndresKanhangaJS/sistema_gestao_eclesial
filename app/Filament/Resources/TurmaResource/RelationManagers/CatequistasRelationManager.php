@@ -48,7 +48,7 @@ class CatequistasRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('nome_completo')
                     ->label('Nome'),
                 Tables\Columns\TextColumn::make('telefone')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\BadgeColumn::make('pivot.papel')
                     ->label('Papel')
                     ->formatStateUsing(fn (string $state) => $state === 'titular' ? 'Titular' : 'Auxiliar')

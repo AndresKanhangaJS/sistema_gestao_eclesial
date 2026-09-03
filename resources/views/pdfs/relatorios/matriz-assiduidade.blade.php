@@ -21,7 +21,7 @@
                         <td class="text-right">
                             @if ($estado === 'pago') P
                             @elseif ($estado === 'em_aberto') A
-                            @else — @endif
+                            @else - @endif
                         </td>
                     @endforeach
                     <td>{{ $linha['segmento'] ?? $linha['total_pagos'] . '/12' }}</td>
@@ -32,5 +32,5 @@
         </tbody>
     </table>
 
-    <p class="meta">P = Pago &middot; A = Em aberto &middot; — = Não vinculado</p>
+    <p class="meta">P = Pago &middot; A = Em aberto &middot; - = Não vinculado</p>
 @endsection

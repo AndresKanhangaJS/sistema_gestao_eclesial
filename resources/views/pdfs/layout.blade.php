@@ -14,6 +14,7 @@
         th { background: #f3f4f6; }
         .text-right { text-align: right; }
         .total-row td { font-weight: bold; background: #f9fafb; }
+        footer.rodape { margin-top: 16px; padding-top: 8px; border-top: 1px solid #d1d5db; color: #9ca3af; font-size: 9px; text-align: center; }
     </style>
 </head>
 <body>
@@ -31,5 +32,7 @@
     </header>
 
     @yield('conteudo')
+
+    <footer class="rodape">made by &lt;AVK/&gt;</footer>
 </body>
 </html>

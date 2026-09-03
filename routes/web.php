@@ -26,7 +26,7 @@ use Spatie\Activitylog\Models\Activity;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('home');
 
 /*
 |--------------------------------------------------------------------------
@@ -241,7 +241,7 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
         $rows = collect($linhas)->map(fn ($linha) => [
             'Fiel' => $linha['fiel']->nome,
             'Dízimos pagos' => $linha['total_pagos'].'/12',
-            'Situação' => $linha['segmento'] ?? '—',
+            'Situação' => $linha['segmento'] ?? '-',
         ])->all();
 
         return Excel::download(

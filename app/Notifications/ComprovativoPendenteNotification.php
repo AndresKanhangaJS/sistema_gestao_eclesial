@@ -28,7 +28,7 @@ class ComprovativoPendenteNotification extends Notification implements ShouldQue
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject('SGE — Comprovativos pendentes há mais de 48h')
+            ->subject('SGE - Comprovativos pendentes há mais de 48h')
             ->greeting('Olá, ' . $notifiable->name)
             ->line('Os seguintes movimentos estão pendentes de comprovativo há mais de 48 horas:');
 

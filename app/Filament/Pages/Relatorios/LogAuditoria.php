@@ -44,7 +44,7 @@ class LogAuditoria extends Page implements HasTable
     {
         return [
             Tables\Columns\TextColumn::make('created_at')->label('Data/Hora')->dateTime(),
-            Tables\Columns\TextColumn::make('causer.name')->label('Utilizador')->default('—'),
+            Tables\Columns\TextColumn::make('causer.name')->label('Utilizador')->default('-'),
             Tables\Columns\TextColumn::make('description')->label('Evento'),
             Tables\Columns\TextColumn::make('subject_id')->label('Movimento #'),
             Tables\Columns\TextColumn::make('changes')

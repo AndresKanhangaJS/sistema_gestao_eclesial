@@ -56,7 +56,7 @@
                                     {{ $linha['segmento'] }}
                                 </x-filament::badge>
                             @else
-                                <span class="text-gray-400">—</span>
+                                <span class="text-gray-400">-</span>
                             @endif
                         </td>
                     </tr>

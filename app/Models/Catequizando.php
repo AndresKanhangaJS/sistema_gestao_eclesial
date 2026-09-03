@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoInscricao;
 use App\Models\Concerns\TemIdMascarado;
 use App\Scopes\ParoquiaScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -87,5 +88,24 @@ class Catequizando extends Model
     public function inscricoes(): HasMany
     {
         return $this->hasMany(Inscricao::class);
+    }
+
+    /**
+     * Inscricao nao-cancelada do catequizando num ano lectivo concreto —
+     * reaproveitado pelas colunas "Ano de Catequese"/"Estado" da lista, pelo
+     * modal "Dados de Catequese" e pela accao "Confirmar para o Próximo Ano
+     * Lectivo" (docs/modulos/catequese.md secc. 27), para nao repetir a
+     * mesma query em quatro sitios.
+     */
+    public function inscricaoNoAnoLetivo(?int $anoLetivoId): ?Inscricao
+    {
+        if (blank($anoLetivoId)) {
+            return null;
+        }
+
+        return $this->inscricoes
+            ->where('ano_letivo_id', $anoLetivoId)
+            ->where('estado', '!=', EstadoInscricao::Cancelado)
+            ->first();
     }
 }

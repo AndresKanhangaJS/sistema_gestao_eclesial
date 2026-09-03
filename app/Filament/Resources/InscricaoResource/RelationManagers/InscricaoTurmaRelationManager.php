@@ -67,11 +67,11 @@ class InscricaoTurmaRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('pivot.data_fim')
                     ->label('Fim')
                     ->date()
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('pivot.motivo')
                     ->label('Motivo')
                     ->limit(30)
-                    ->placeholder('—'),
+                    ->placeholder('-'),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('colocarOuTrocarTurma')

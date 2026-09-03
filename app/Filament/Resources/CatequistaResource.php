@@ -136,17 +136,17 @@ class CatequistaResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('centro.nome')
                     ->label('Centro')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('data_nascimento')
                     ->label('Data de Nascimento')
                     ->date()
                     ->sortable()
-                    ->placeholder('—')
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('telefone')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('email')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\IconColumn::make('ativo')
                     ->label('Activo')
                     ->boolean(),

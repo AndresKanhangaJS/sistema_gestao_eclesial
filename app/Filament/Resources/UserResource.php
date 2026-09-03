@@ -227,10 +227,10 @@ class UserResource extends Resource
                     ->badge(),
                 Tables\Columns\TextColumn::make('paroquia.nome')
                     ->label('Paróquia')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('centro.nome')
                     ->label('Centro')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\IconColumn::make('status')
                     ->label('Estado')
                     ->boolean()
@@ -279,7 +279,7 @@ class UserResource extends Resource
 
                             Notification::make()
                                 ->title('Senha redefinida')
-                                ->body("Senha temporária de {$record->name}: {$senhaTemporaria} — partilhe-a com o utilizador, vai ter de a trocar no próximo login.")
+                                ->body("Senha temporária de {$record->name}: {$senhaTemporaria} - partilhe-a com o utilizador, vai ter de a trocar no próximo login.")
                                 ->warning()
                                 ->persistent()
                                 ->send();

@@ -48,25 +48,34 @@ class Inscricao extends Model
         static::addGlobalScope(new ParoquiaScope);
 
         static::creating(function (self $inscricao): void {
-            if (blank($inscricao->numero_ficha) && $inscricao->paroquia_id && $inscricao->ano_letivo_id) {
-                $inscricao->numero_ficha = self::proximoNumeroFicha($inscricao->paroquia_id, $inscricao->ano_letivo_id);
+            if (blank($inscricao->numero_ficha) && $inscricao->paroquia_id && $inscricao->centro_id && $inscricao->ano_letivo_id) {
+                $inscricao->numero_ficha = self::proximoNumeroFicha($inscricao->paroquia_id, $inscricao->centro_id, $inscricao->ano_letivo_id);
             }
         });
     }
 
     /**
      * Gerado automaticamente (nunca digitado a mao no formulario), no
-     * formato "F0001", reiniciando por (paroquia_id, ano_letivo_id) — mesmo
-     * espirito do codigo_dizimista em Fiel::proximoCodigoDizimista(). Ignora
-     * valores antigos que nao sigam o formato "F"+digitos (ex.: dados de
-     * demonstracao antigos no formato "F0001/26") ao calcular o proximo
+     * formato "F0001", reiniciando por (paroquia_id, centro_id,
+     * ano_letivo_id) — nao so por paroquia, porque os centros sao
+     * independentes entre si (pedido do utilizador, 2026-09-03): dois
+     * centros da mesma paroquia podem ambos ter o "F0001" no mesmo ano
+     * lectivo, exactamente como as fichas de papel originais, cada centro
+     * com a sua propria numeracao. paroquia_id continua no scope mesmo
+     * sendo tecnicamente derivavel de centro_id (um centro nunca muda de
+     * paroquia) — pedido explicito do utilizador para o isolamento entre
+     * paroquias diferentes na mesma BD ficar explicito, nao implicito.
+     * Mesmo espirito do codigo_dizimista em Fiel::proximoCodigoDizimista().
+     * Ignora valores antigos que nao sigam o formato "F"+digitos (ex.: dados
+     * de demonstracao antigos no formato "F0001/26") ao calcular o proximo
      * numero, para nao quebrar com dados legados.
      */
-    public static function proximoNumeroFicha(int $paroquiaId, int $anoLetivoId): string
+    public static function proximoNumeroFicha(int $paroquiaId, int $centroId, int $anoLetivoId): string
     {
         $ultimo = static::withTrashed()
             ->withoutGlobalScopes()
             ->where('paroquia_id', $paroquiaId)
+            ->where('centro_id', $centroId)
             ->where('ano_letivo_id', $anoLetivoId)
             ->get(['numero_ficha'])
             ->map(function (self $inscricao) {

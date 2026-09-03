@@ -15,7 +15,7 @@
             @forelse ($atividades as $atividade)
                 <tr>
                     <td>{{ $atividade->created_at->format('d/m/Y H:i') }}</td>
-                    <td>{{ $atividade->causer->name ?? '—' }}</td>
+                    <td>{{ $atividade->causer->name ?? '-' }}</td>
                     <td>{{ $atividade->description }}</td>
                     <td>{{ $atividade->subject_id }}</td>
                     <td>{{ json_encode($atividade->changes()->get('attributes', [])) }}</td>

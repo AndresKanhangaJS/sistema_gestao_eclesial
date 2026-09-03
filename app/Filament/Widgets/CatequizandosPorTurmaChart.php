@@ -49,7 +49,7 @@ class CatequizandosPorTurmaChart extends ChartWidget
             // utilizador: varias turmas podem ter o mesmo "1º Ano · Manhã",
             // só o conjunto de sacramentos distingue umas das outras.
             'labels' => $turmas->map(function (Turma $t) {
-                $label = ($t->anoCatequetico?->nome ?? '—').' · '.ucfirst($t->periodo);
+                $label = ($t->anoCatequetico?->nome ?? '-').' · '.ucfirst($t->periodo);
                 $sacramentos = $t->sacramentos->pluck('nome')->implode(', ');
 
                 return $sacramentos !== '' ? "{$label} ({$sacramentos})" : $label;

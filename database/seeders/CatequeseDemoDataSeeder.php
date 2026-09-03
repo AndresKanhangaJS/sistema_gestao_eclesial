@@ -246,8 +246,9 @@ class CatequeseDemoDataSeeder extends Seeder
                         // DatabaseSeeder usa WithoutModelEvents (desliga o hook
                         // Inscricao::booted() 'creating' durante o seed, mesmo motivo do
                         // codigo_dizimista manual em DemoDataSeeder) — chamamos o gerador
-                        // directamente em vez de depender do evento.
-                        'numero_ficha' => Inscricao::proximoNumeroFicha($paroquia->id, $anoLetivo->id),
+                        // directamente em vez de depender do evento. Por paroquia e por
+                        // centro (centros sao independentes entre si).
+                        'numero_ficha' => Inscricao::proximoNumeroFicha($paroquia->id, $turma->centro_id, $anoLetivo->id),
                         'data_atendimento' => $anoLetivo->data_inicio,
                         'estado' => $estado,
                     ]
@@ -293,13 +294,13 @@ class CatequeseDemoDataSeeder extends Seeder
         $activa->update([
             'status' => 'transferido',
             'data_fim' => now()->subMonths(2),
-            'motivo' => 'Pedido do encarregado — mudança de horário.',
+            'motivo' => 'Pedido do encarregado - mudança de horário.',
         ]);
 
         $inscricao->turmas()->attach($turmas['B']->id, [
             'status' => 'ativo',
             'data_inicio' => now()->subMonths(2)->addDay(),
-            'motivo' => 'Pedido do encarregado — mudança de horário.',
+            'motivo' => 'Pedido do encarregado - mudança de horário.',
         ]);
 
         // Turma A é Baptismo+Comunhão, Turma B é só Comunhão — sacramentos

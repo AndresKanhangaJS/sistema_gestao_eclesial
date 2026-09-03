@@ -22,8 +22,8 @@
                     <td>{{ $inscricao->catequizando->nome_completo }}</td>
                     <td>{{ $inscricao->centro->nome }}</td>
                     <td>{{ $inscricao->anoLetivo->nome }}</td>
-                    <td>{{ $inscricao->anoCatequetico->nome ?? '—' }}</td>
-                    <td>{{ $inscricao->sacramentos->pluck('nome')->implode(', ') ?: '—' }}</td>
+                    <td>{{ $inscricao->anoCatequetico->nome ?? '-' }}</td>
+                    <td>{{ $inscricao->sacramentos->pluck('nome')->implode(', ') ?: '-' }}</td>
                     <td>{{ $inscricao->numero_ficha }}</td>
                     <td>{{ $inscricao->data_atendimento->format('d/m/Y') }}</td>
                     <td>{{ ucfirst($inscricao->estado->value) }}</td>

@@ -16,7 +16,7 @@
                 <tr>
                     <td>{{ $linha['fiel']->nome }}</td>
                     <td class="text-right">{{ $linha['total_pagos'] }}/12</td>
-                    <td>{{ $linha['segmento'] ?? '—' }}</td>
+                    <td>{{ $linha['segmento'] ?? '-' }}</td>
                 </tr>
             @empty
                 <tr><td colspan="3">Sem fiéis para este ano/centro.</td></tr>

@@ -126,8 +126,8 @@ class InscricaoResource extends Resource
                         Forms\Components\Select::make('tipo')
                             ->label('Tipo')
                             ->options([
-                                TipoInscricao::Nova->value => 'Nova',
-                                TipoInscricao::Confirmacao->value => 'Confirmação (progressão de ano)',
+                                TipoInscricao::Nova->value => TipoInscricao::Nova->label(),
+                                TipoInscricao::Confirmacao->value => TipoInscricao::Confirmacao->label().' (progressão de ano)',
                             ])
                             ->required()
                             ->default(TipoInscricao::Nova->value),
@@ -136,7 +136,7 @@ class InscricaoResource extends Resource
                             ->disabled()
                             ->dehydrated(false)
                             ->visible(fn (string $operation) => $operation === 'edit')
-                            ->helperText('Gerado automaticamente ao criar a ficha (a partir de 0001, por ano lectivo).'),
+                            ->helperText('Gerado automaticamente ao criar a ficha (a partir de 0001, por centro e ano lectivo).'),
                         Forms\Components\DatePicker::make('data_atendimento')
                             ->label('Data de Atendimento')
                             ->required()
@@ -176,20 +176,18 @@ class InscricaoResource extends Resource
                     ->label('Ano Lectivo'),
                 Tables\Columns\TextColumn::make('anoCatequetico.nome')
                     ->label('Ano Catequese')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('sacramentos.nome')
                     ->label('Sacramento(s)')
                     ->badge()
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('numero_ficha')
                     ->label('Nº Ficha')
                     ->searchable(),
                 Tables\Columns\BadgeColumn::make('tipo')
                     ->label('Tipo')
-                    ->formatStateUsing(fn (TipoInscricao $state) => match ($state) {
-                        TipoInscricao::Nova => 'Nova',
-                        TipoInscricao::Confirmacao => 'Confirmação',
-                    }),
+                    ->formatStateUsing(fn (TipoInscricao $state) => $state->label())
+                    ->color(fn (TipoInscricao $state) => $state->color()),
                 Tables\Columns\TextColumn::make('data_atendimento')
                     ->label('Data')
                     ->date()
@@ -223,8 +221,8 @@ class InscricaoResource extends Resource
                 Tables\Filters\SelectFilter::make('tipo')
                     ->label('Tipo')
                     ->options([
-                        TipoInscricao::Nova->value => 'Nova',
-                        TipoInscricao::Confirmacao->value => 'Confirmação',
+                        TipoInscricao::Nova->value => TipoInscricao::Nova->label(),
+                        TipoInscricao::Confirmacao->value => TipoInscricao::Confirmacao->label(),
                     ]),
                 Tables\Filters\SelectFilter::make('ano_letivo_id')
                     ->label('Ano Lectivo')

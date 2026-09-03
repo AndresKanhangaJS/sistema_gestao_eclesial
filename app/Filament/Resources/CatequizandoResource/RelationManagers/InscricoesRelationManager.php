@@ -40,10 +40,8 @@ class InscricoesRelationManager extends RelationManager
                     ->label('Nº Ficha'),
                 Tables\Columns\BadgeColumn::make('tipo')
                     ->label('Tipo')
-                    ->formatStateUsing(fn (TipoInscricao $state) => match ($state) {
-                        TipoInscricao::Nova => 'Nova',
-                        TipoInscricao::Confirmacao => 'Confirmação',
-                    }),
+                    ->formatStateUsing(fn (TipoInscricao $state) => $state->label())
+                    ->color(fn (TipoInscricao $state) => $state->color()),
                 Tables\Columns\TextColumn::make('turmaAtiva.turma.publico_alvo')
                     ->label('Turma actual')
                     ->formatStateUsing(fn ($record) => $record->turmaAtiva?->turma

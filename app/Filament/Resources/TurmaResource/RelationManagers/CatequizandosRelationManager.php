@@ -67,11 +67,11 @@ class CatequizandosRelationManager extends RelationManager
                 $ocupadas = $turma->vagasOcupadas();
 
                 if ($turma->vagas_bloqueadas) {
-                    return "Vagas bloqueadas manualmente ({$ocupadas}/{$turma->vagas_maximo}) — use \"Desbloquear Vagas\" para voltar a aceitar catequizandos.";
+                    return "Vagas bloqueadas manualmente ({$ocupadas}/{$turma->vagas_maximo}) - use \"Desbloquear Vagas\" para voltar a aceitar catequizandos.";
                 }
 
                 if ($turma->estaCheia()) {
-                    return "Atenção: a turma atingiu o número máximo de vagas ({$ocupadas}/{$turma->vagas_maximo}). Continua a aceitar novos catequizandos até bloqueares manualmente — use \"Bloquear Vagas\" ou \"Aumentar Vagas\".";
+                    return "Atenção: a turma atingiu o número máximo de vagas ({$ocupadas}/{$turma->vagas_maximo}). Continua a aceitar novos catequizandos até bloqueares manualmente - use \"Bloquear Vagas\" ou \"Aumentar Vagas\".";
                 }
 
                 return "{$ocupadas}/{$turma->vagas_maximo} vagas ocupadas.";
@@ -88,7 +88,7 @@ class CatequizandosRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('pivot.data_fim')
                     ->label('Fim')
                     ->date()
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\BadgeColumn::make('pivot.status')
                     ->label('Estado')
                     ->formatStateUsing(fn (EstadoInscricaoTurma $state) => $state->label())

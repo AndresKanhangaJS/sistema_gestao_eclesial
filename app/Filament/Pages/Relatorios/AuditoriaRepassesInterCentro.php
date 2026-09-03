@@ -85,6 +85,6 @@ class AuditoriaRepassesInterCentro extends Page implements HasTable
             ->with('centro')
             ->first();
 
-        return $anterior?->centro?->nome ?? '—';
+        return $anterior?->centro?->nome ?? '-';
     }
 }

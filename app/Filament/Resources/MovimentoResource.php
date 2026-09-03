@@ -254,15 +254,15 @@ class MovimentoResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('fiel.nome')
                     ->label('Fiel')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('ano_competencia')
                     ->label('Ano')
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('mes_competencia')
                     ->label('Mês')
                     ->formatStateUsing(fn (?int $state) => self::mesLabel($state))
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('valor')
                     ->label('Valor')
                     ->money('AOA')

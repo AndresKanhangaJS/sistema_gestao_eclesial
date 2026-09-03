@@ -59,11 +59,11 @@ class MovimentosRelationManager extends RelationManager
                     ->label('Centro'),
                 Tables\Columns\TextColumn::make('ano_competencia')
                     ->label('Ano')
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('mes_competencia')
                     ->label('Mês')
                     ->formatStateUsing(fn (?int $state) => MovimentoResource::mesLabel($state))
-                    ->placeholder('—'),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('valor')
                     ->label('Valor')
                     ->money('AOA'),

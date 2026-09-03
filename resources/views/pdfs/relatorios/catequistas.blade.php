@@ -17,9 +17,9 @@
                 <tr>
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $catequista->nome_completo }}</td>
-                    <td>{{ $catequista->centro->nome ?? '—' }}</td>
-                    <td>{{ $catequista->telefone ?? '—' }}</td>
-                    <td>{{ $catequista->email ?? '—' }}</td>
+                    <td>{{ $catequista->centro->nome ?? '-' }}</td>
+                    <td>{{ $catequista->telefone ?? '-' }}</td>
+                    <td>{{ $catequista->email ?? '-' }}</td>
                     <td>{{ $catequista->ativo ? 'Activo' : 'Inactivo' }}</td>
                 </tr>
             @endforeach
