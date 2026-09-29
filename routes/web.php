@@ -11,6 +11,7 @@ use App\Models\Inscricao;
 use App\Models\Movimento;
 use App\Models\Turma;
 use Illuminate\Support\Str;
+use App\Services\BalanceteService;
 use App\Services\BalancoReceitasDespesasService;
 use App\Services\DemonstrativoArrecadacaoService;
 use App\Services\DemonstrativoDespesasService;
@@ -229,6 +230,84 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
             'dados' => BalancoReceitasDespesasService::calcular($ano, $centro?->id),
         ])->name('balanco-receitas-despesas.pdf');
     })->name('balanco-receitas-despesas.pdf');
+
+    Route::get('/balancete-mensal/excel', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
+
+        $centro = ResolveCentroExportacao::centro($user, $request);
+        abort_if(! $centro, 422, 'Escolha um centro.');
+
+        $ano = (int) $request->query('ano', now()->year);
+        $mes = (int) $request->query('mes', now()->month);
+        $dados = BalanceteService::calcular($ano, $mes, $centro->id, $centro->paroquia_id);
+
+        $rows = [
+            ['Linha' => '1.1.1 Subsídios', 'Valor' => $dados['receitas']['subsidios']],
+            ['Linha' => '1.1.2 Donativos', 'Valor' => $dados['receitas']['donativos']],
+            ['Linha' => '1.1.3 Peditórios', 'Valor' => $dados['receitas']['peditorios']],
+            ['Linha' => '1.1.4 Entradas do Cartório', 'Valor' => $dados['receitas']['cartorio']],
+        ];
+        foreach ($dados['receitas']['diversas'] as $linha) {
+            $rows[] = ['Linha' => '1.1.5 '.$linha['nome'], 'Valor' => $linha['valor']];
+        }
+        $rows[] = ['Linha' => 'Subtotal Receitas Ordinárias', 'Valor' => $dados['receitas']['subtotal_ordinarias']];
+        $rows[] = ['Linha' => '1.2 Côngruas', 'Valor' => $dados['receitas']['congruas']];
+        $rows[] = ['Linha' => '1.3 Intenções de Missa', 'Valor' => $dados['receitas']['intencoes_missa']];
+        $rows[] = ['Linha' => 'Saldo Mês Anterior', 'Valor' => $dados['receitas']['saldo_mes_anterior']];
+        $rows[] = ['Linha' => 'TOTAL DE RECEITAS', 'Valor' => $dados['receitas']['total']];
+
+        $rows[] = ['Linha' => '2.1.1 Subsídio aos Padres', 'Valor' => $dados['despesas']['subsidio_padres']];
+        $rows[] = ['Linha' => '2.1.2 Estipêndios', 'Valor' => $dados['despesas']['estipendios']];
+        $rows[] = ['Linha' => '2.1.3 Subsídio Casa Paroquial', 'Valor' => $dados['despesas']['subsidio_casa_paroquial']];
+        $rows[] = ['Linha' => '2.2.1 Salário Funcionários + INSS', 'Valor' => $dados['despesas']['salario_funcionarios']];
+        $rows[] = ['Linha' => '2.2.2 Despesas de Culto', 'Valor' => $dados['despesas']['despesas_culto']];
+        $rows[] = ['Linha' => '2.2.3 Transporte - Viagens', 'Valor' => $dados['despesas']['transporte']];
+        $rows[] = ['Linha' => '2.2.4 Energia', 'Valor' => $dados['despesas']['energia']];
+        $rows[] = ['Linha' => '2.2.5 Água', 'Valor' => $dados['despesas']['agua']];
+        $rows[] = ['Linha' => '2.2.6 Internet - Comunicações', 'Valor' => $dados['despesas']['internet']];
+        $rows[] = ['Linha' => '2.2.7 Donativos e esmolas', 'Valor' => $dados['despesas']['donativos_esmolas']];
+        foreach ($dados['despesas']['outras_despesas'] as $linha) {
+            $rows[] = ['Linha' => '2.2.8 '.$linha['nome'], 'Valor' => $linha['valor']];
+        }
+        $rows[] = ['Linha' => 'Subtotal Despesas Correntes', 'Valor' => $dados['despesas']['subtotal_correntes']];
+        $rows[] = ['Linha' => '2.3.1 Contributo Bispado ('.number_format($dados['despesas']['percentual_bispado'], 0).'%)', 'Valor' => $dados['despesas']['contributo_bispado']];
+        $rows[] = ['Linha' => '2.3.2 Contributo do Dízimo ('.number_format($dados['despesas']['percentual_dizimo'], 0).'%)', 'Valor' => $dados['despesas']['contributo_dizimo']];
+        $rows[] = ['Linha' => '2.3.3 Missas Binadas', 'Valor' => $dados['despesas']['missas_binadas']];
+        foreach ($dados['despesas']['colectas_obrigatorias'] as $linha) {
+            $rows[] = ['Linha' => '2.3.4 '.$linha['nome'], 'Valor' => $linha['valor']];
+        }
+        $rows[] = ['Linha' => 'TOTAL DE DESPESAS', 'Valor' => $dados['despesas']['total']];
+        $rows[] = ['Linha' => 'SALDO DO MÊS EM CURSO', 'Valor' => $dados['saldo_mes']];
+
+        return Excel::download(new ArrayExport($rows, ['Linha', 'Valor']), 'balancete-mensal.xlsx');
+    })->name('balancete-mensal.excel');
+
+    Route::get('/balancete-mensal/pdf', function (Request $request) {
+        $user = Auth::user();
+        abort_unless($user->hasRole(['admin_geral', 'administrador_paroquial', 'tesoureiro_paroquial', 'tesoureiro_centro', 'coordenador_centro', 'consultor']), 403);
+
+        $centro = ResolveCentroExportacao::centro($user, $request);
+        abort_if(! $centro, 422, 'Escolha um centro.');
+
+        $ano = (int) $request->query('ano', now()->year);
+        $mes = (int) $request->query('mes', now()->month);
+
+        $meses = [
+            1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+            5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+            9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro',
+        ];
+
+        return RelatorioPdf::view('pdfs.relatorios.balancete-mensal', [
+            'titulo' => 'Balancete',
+            'paroquia' => $user->paroquiaParaExportacao($centro),
+            'centro' => $centro,
+            'ano' => $ano,
+            'mesLabel' => $meses[$mes] ?? (string) $mes,
+            'dados' => BalanceteService::calcular($ano, $mes, $centro->id, $centro->paroquia_id),
+        ])->name('balancete-mensal.pdf');
+    })->name('balancete-mensal.pdf');
 
     Route::get('/fieis-por-situacao/excel', function (Request $request) {
         $user = Auth::user();

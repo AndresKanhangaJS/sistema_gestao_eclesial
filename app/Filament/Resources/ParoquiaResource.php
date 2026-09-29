@@ -47,6 +47,28 @@ class ParoquiaResource extends Resource
                                     ])
                                     ->required()
                                     ->default('ativo'),
+                                Forms\Components\TextInput::make('percentual_contributo_bispado')
+                                    ->label('Contributo ao Bispado (%)')
+                                    ->helperText('Percentagem do Total de Receitas repassada mensalmente ao Bispado, calculada no relatório "Balancete".')
+                                    ->numeric()
+                                    ->required()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->suffix('%')
+                                    ->default(20),
+                                Forms\Components\TextInput::make('percentual_contributo_dizimo')
+                                    ->label('Contributo do Dízimo à Arquidiocese (%)')
+                                    ->helperText('Percentagem das Côngruas (Dízimo) repassada mensalmente à Arquidiocese, calculada no relatório "Balancete".')
+                                    ->numeric()
+                                    ->required()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->suffix('%')
+                                    ->default(60),
+                                Forms\Components\Placeholder::make('aviso_percentagens')
+                                    ->label('')
+                                    ->content('Alterar estas percentagens só afecta os meses do Balancete ainda por fechar. Um mês já fechado mantém a percentagem que estava em vigor nesse momento, mesmo depois desta alteração.')
+                                    ->columnSpanFull(),
                                 // Reaproveitado no cabecalho dos PDFs exportados
                                 // (Paroquia::logoBase64(), pdfs/layout.blade.php).
                                 Forms\Components\FileUpload::make('logo_path')
@@ -103,6 +125,14 @@ class ParoquiaResource extends Resource
                     ->label('Estado')
                     ->boolean()
                     ->getStateUsing(fn ($record) => $record->status === 'ativo'),
+                Tables\Columns\TextColumn::make('percentual_contributo_bispado')
+                    ->label('Contributo Bispado')
+                    ->suffix('%')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('percentual_contributo_dizimo')
+                    ->label('Contributo Dízimo')
+                    ->suffix('%')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()

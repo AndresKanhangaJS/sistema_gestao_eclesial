@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <div class="mb-4">
-        <x-filament::button tag="a" href="{{ route('relatorios.rastreabilidade-bancaria.pdf') }}" color="gray" icon="heroicon-o-document-arrow-down">
+        <x-filament::button tag="a" :href="route('relatorios.rastreabilidade-bancaria.pdf')" color="gray" icon="heroicon-o-document-arrow-down">
             Baixar PDF
         </x-filament::button>
     </div>

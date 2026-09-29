@@ -22,10 +22,10 @@
             </div>
         @endif
         <div class="flex gap-2">
-            <x-filament::button tag="a" href="{{ route('relatorios.demonstrativo-arrecadacao.excel', ['ano' => $ano, 'centro_id' => $centroId]) }}" icon="heroicon-o-table-cells">
+            <x-filament::button tag="a" :href="route('relatorios.demonstrativo-arrecadacao.excel', ['ano' => $ano, 'centro_id' => $centroId])" icon="heroicon-o-table-cells">
                 Exportar Excel
             </x-filament::button>
-            <x-filament::button tag="a" href="{{ route('relatorios.demonstrativo-arrecadacao.pdf', ['ano' => $ano, 'centro_id' => $centroId]) }}" color="gray" icon="heroicon-o-document-arrow-down">
+            <x-filament::button tag="a" :href="route('relatorios.demonstrativo-arrecadacao.pdf', ['ano' => $ano, 'centro_id' => $centroId])" color="gray" icon="heroicon-o-document-arrow-down">
                 Baixar PDF
             </x-filament::button>
         </div>

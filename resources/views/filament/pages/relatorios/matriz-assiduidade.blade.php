@@ -27,10 +27,10 @@
             </x-filament::input.wrapper>
         </div>
         <div class="flex gap-2">
-            <x-filament::button tag="a" href="{{ route('relatorios.matriz-assiduidade.excel', ['centro_id' => $centroId, 'ano' => $ano]) }}" icon="heroicon-o-table-cells">
+            <x-filament::button tag="a" :href="route('relatorios.matriz-assiduidade.excel', ['centro_id' => $centroId, 'ano' => $ano])" icon="heroicon-o-table-cells">
                 Exportar Excel
             </x-filament::button>
-            <x-filament::button tag="a" href="{{ route('relatorios.matriz-assiduidade.pdf', ['centro_id' => $centroId, 'ano' => $ano]) }}" color="gray" icon="heroicon-o-document-arrow-down">
+            <x-filament::button tag="a" :href="route('relatorios.matriz-assiduidade.pdf', ['centro_id' => $centroId, 'ano' => $ano])" color="gray" icon="heroicon-o-document-arrow-down">
                 Baixar PDF
             </x-filament::button>
         </div>

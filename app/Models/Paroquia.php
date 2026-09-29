@@ -22,6 +22,13 @@ class Paroquia extends Model
         'telefone',
         'status',
         'logo_path',
+        'percentual_contributo_dizimo',
+        'percentual_contributo_bispado',
+    ];
+
+    protected $casts = [
+        'percentual_contributo_dizimo' => 'decimal:2',
+        'percentual_contributo_bispado' => 'decimal:2',
     ];
 
     /**

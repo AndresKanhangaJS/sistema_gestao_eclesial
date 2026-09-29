@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoriaDespesaResource\Pages;
 use App\Models\CategoriaDespesa;
+use App\Support\LinhasBalancete;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -34,6 +35,11 @@ class CategoriaDespesaResource extends Resource
                         Forms\Components\TextInput::make('nome')
                             ->required()
                             ->maxLength(255),
+                        Forms\Components\Select::make('linha_balancete')
+                            ->label('Linha do Balancete')
+                            ->helperText('Opcional. Associa esta categoria a uma linha fixa do relatório "Balancete". Sem escolha, entra em "Outras Despesas".')
+                            ->options(LinhasBalancete::DESPESA)
+                            ->native(false),
                         Forms\Components\Textarea::make('descricao')
                             ->label('Descrição')
                             ->columnSpanFull(),
@@ -59,6 +65,10 @@ class CategoriaDespesaResource extends Resource
                 Tables\Columns\TextColumn::make('descricao')
                     ->label('Descrição')
                     ->limit(50),
+                Tables\Columns\TextColumn::make('linha_balancete')
+                    ->label('Linha do Balancete')
+                    ->formatStateUsing(fn (?string $state) => $state ? "{$state}: ".(LinhasBalancete::DESPESA[$state] ?? 'Reservada') : '-')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('movimentos_count')
                     ->label('Despesas lançadas')
                     ->counts('movimentos'),

@@ -21,6 +21,7 @@ class CategoriaDespesa extends Model
     protected $fillable = [
         'paroquia_id',
         'nome',
+        'linha_balancete',
         'descricao',
         'status',
     ];
