@@ -150,7 +150,7 @@ class CatequizandoImporterTest extends TestCase
         $importer($this->linhaBase(['nome_completo' => '']));
     }
 
-    public function test_data_nascimento_em_falta_falha_a_validacao(): void
+    public function test_data_nascimento_em_falta_e_aceite_e_fica_nula(): void
     {
         $paroquia = Paroquia::factory()->create();
         $centro = Centro::factory()->create(['paroquia_id' => $paroquia->id]);
@@ -161,8 +161,11 @@ class CatequizandoImporterTest extends TestCase
         $import = $this->criarImport($coordenador);
         $importer = new CatequizandoImporter($import, columnMap: $this->colunas(), options: ['centro_id' => $centro->id]);
 
-        $this->expectException(ValidationException::class);
-
         $importer($this->linhaBase(['data_nascimento' => '']));
+
+        $catequizando = Catequizando::where('nome_completo', 'João Manuel dos Santos')->first();
+
+        $this->assertNotNull($catequizando);
+        $this->assertNull($catequizando->data_nascimento);
     }
 }

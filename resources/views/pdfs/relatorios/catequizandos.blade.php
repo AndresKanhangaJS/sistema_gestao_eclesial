@@ -19,7 +19,7 @@
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $catequizando->nome_completo }}</td>
                     <td>{{ $catequizando->centro->nome }}</td>
-                    <td>{{ $catequizando->data_nascimento->format('d/m/Y') }}</td>
+                    <td>{{ $catequizando->data_nascimento ? $catequizando->data_nascimento->format('d/m/Y').($catequizando->data_nascimento_aproximada ? ' (aprox.)' : '') : '—' }}</td>
                     <td>{{ $catequizando->sexo === 'M' ? 'Masculino' : 'Feminino' }}</td>
                     <td>{{ $catequizando->telefone ?? '-' }}</td>
                     <td>{{ $catequizando->status === 'ativo' ? 'Activo' : 'Inactivo' }}</td>

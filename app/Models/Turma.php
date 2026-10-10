@@ -22,6 +22,8 @@ class Turma extends Model
         'centro_id',
         'ano_letivo_id',
         'ano_catequetico_id',
+        'nome',
+        'catecismo_id',
         'publico_alvo',
         'periodo',
         'hora_inicio',
@@ -62,6 +64,11 @@ class Turma extends Model
     public function anoCatequetico(): BelongsTo
     {
         return $this->belongsTo(AnoCatequetico::class);
+    }
+
+    public function catecismo(): BelongsTo
+    {
+        return $this->belongsTo(Catecismo::class);
     }
 
     public function sacramentos(): BelongsToMany
@@ -108,10 +115,18 @@ class Turma extends Model
     /**
      * Label curto para identificar a turma em selects e mensagens (ex.:
      * "1º Ano, manhã (09:00–10:00)"), reutilizado onde for preciso apontar
-     * para uma turma especifica fora da propria tabela.
+     * para uma turma especifica fora da propria tabela. Quando existem,
+     * acrescenta o catecismo e o nome da turma (ex.: "Turma 04-A — 1º Ano
+     * (Deus Ama-nos), manhã (09:00–10:00)").
      */
     public function descricaoCurta(): string
     {
-        return "{$this->anoCatequetico?->nome}, {$this->periodo} ({$this->hora_inicio->format('H:i')}–{$this->hora_fim->format('H:i')})";
+        $ano = $this->anoCatequetico?->nome;
+        $catecismo = $this->catecismo?->nome;
+
+        $descricao = ($catecismo ? "{$ano} ({$catecismo})" : (string) $ano)
+            .", {$this->periodo} ({$this->hora_inicio->format('H:i')}–{$this->hora_fim->format('H:i')})";
+
+        return filled($this->nome) ? "{$this->nome} — {$descricao}" : $descricao;
     }
 }

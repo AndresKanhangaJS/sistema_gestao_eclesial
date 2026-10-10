@@ -31,6 +31,7 @@ class Catequizando extends Model
         'provincia_nascimento',
         'pais_nascimento',
         'data_nascimento',
+        'data_nascimento_aproximada',
         'sexo',
         'residencia',
         'rua_numero',
@@ -45,6 +46,7 @@ class Catequizando extends Model
 
     protected $casts = [
         'data_nascimento' => 'date',
+        'data_nascimento_aproximada' => 'boolean',
     ];
 
     protected static function booted(): void

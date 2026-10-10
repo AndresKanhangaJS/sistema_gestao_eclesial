@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AnoLetivoResource\Pages;
 use App\Models\AnoLetivo;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -46,12 +47,20 @@ class AnoLetivoResource extends Resource
                             ->required()
                             ->maxLength(255),
                         Forms\Components\DatePicker::make('data_inicio')
-                            ->label('Data de Início')
-                            ->required(),
+                            ->label('Data de Início'),
                         Forms\Components\DatePicker::make('data_fim')
                             ->label('Data de Fim')
-                            ->required()
-                            ->afterOrEqual('data_inicio'),
+                            ->rule(fn (Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                $inicio = $get('data_inicio');
+
+                                if (blank($value) || blank($inicio)) {
+                                    return;
+                                }
+
+                                if (Carbon::parse($value)->lt(Carbon::parse($inicio))) {
+                                    $fail('A data de fim deve ser igual ou posterior à data de início.');
+                                }
+                            }),
                         Forms\Components\Select::make('status')
                             ->label('Estado')
                             ->options([
@@ -89,7 +98,8 @@ class AnoLetivoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('data_inicio', 'desc')
+            // data_inicio e nullable: desempata por id (mais recente primeiro)
+            ->defaultSort(fn (Builder $query) => $query->orderByDesc('data_inicio')->orderByDesc('id'))
             ->columns([
                 Tables\Columns\TextColumn::make('paroquia.nome')
                     ->label('Paróquia')
@@ -103,10 +113,12 @@ class AnoLetivoResource extends Resource
                 Tables\Columns\TextColumn::make('data_inicio')
                     ->label('Início')
                     ->date()
+                    ->placeholder('—')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('data_fim')
                     ->label('Fim')
                     ->date()
+                    ->placeholder('—')
                     ->sortable(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Estado')

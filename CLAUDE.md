@@ -39,7 +39,7 @@ Toda conta nova (ou com a senha redefinida) fica marcada para trocar a senha no 
 6. Despesas + Categorias
 7. Relatórios + Exportação PDF/Excel
 8. Notificações (Email + SMS + WhatsApp)
-9. Catequese (Catequizandos, Turmas, Catequistas) — ver docs/modulos/catequese.md para a especificação completa; ainda em desenho, implementação por começar
+9. Catequese (Catequizandos, Turmas, Catequistas) — ver docs/modulos/catequese.md; implementada (passos 1-6) e com carga real 2026/2027 feita (secç. 32)
 
 ## Constraint Crítica
 Unique Key em movimentos: (fiel_id, ano_competencia, mes_competencia) WHERE tipo = 'dizimo'

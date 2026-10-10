@@ -53,6 +53,14 @@ class TurmaResource extends Resource
                             ->disabled()
                             ->dehydrated(false)
                             ->visible(fn (string $operation) => $operation === 'edit'),
+                        Forms\Components\TextInput::make('nome')
+                            ->label('Nome da Turma')
+                            ->maxLength(100),
+                        Forms\Components\Select::make('catecismo_id')
+                            ->label('Catecismo')
+                            ->relationship('catecismo', 'nome', fn (Builder $query) => $query->where('status', 'ativo')->orderBy('ordem'))
+                            ->searchable()
+                            ->preload(),
                         Forms\Components\Select::make('ano_letivo_id')
                             ->label('Ano Lectivo')
                             ->relationship('anoLetivo', 'nome')
@@ -67,6 +75,7 @@ class TurmaResource extends Resource
                                 'criancas' => 'Crianças',
                                 'pre_adolescentes' => 'Pré-adolescentes',
                                 'adolescentes_jovens' => 'Adolescentes e Jovens',
+                                'adultos' => 'Adultos',
                             ])
                             ->required(),
                         Forms\Components\Select::make('periodo')
@@ -127,6 +136,16 @@ class TurmaResource extends Resource
         return $table
             ->defaultSort('id', 'desc')
             ->columns([
+                Tables\Columns\TextColumn::make('nome')
+                    ->label('Nome')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('catecismo.nome')
+                    ->label('Catecismo')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('centro.nome')
                     ->label('Centro')
                     ->sortable(),
@@ -142,6 +161,7 @@ class TurmaResource extends Resource
                         'criancas' => 'Crianças',
                         'pre_adolescentes' => 'Pré-adolescentes',
                         'adolescentes_jovens' => 'Adolescentes e Jovens',
+                        'adultos' => 'Adultos',
                         default => $state,
                     }),
                 Tables\Columns\TextColumn::make('periodo')
@@ -178,6 +198,14 @@ class TurmaResource extends Resource
                 Tables\Filters\SelectFilter::make('ano_catequetico_id')
                     ->label('Ano Catequético')
                     ->options(fn () => AnoCatequetico::orderBy('ordem')->pluck('nome', 'id')),
+                Tables\Filters\SelectFilter::make('publico_alvo')
+                    ->label('Público Alvo')
+                    ->options([
+                        'criancas' => 'Crianças',
+                        'pre_adolescentes' => 'Pré-adolescentes',
+                        'adolescentes_jovens' => 'Adolescentes e Jovens',
+                        'adultos' => 'Adultos',
+                    ]),
                 Tables\Filters\SelectFilter::make('centro_id')
                     ->label('Centro')
                     ->options(fn () => Centro::pluck('nome', 'id'))

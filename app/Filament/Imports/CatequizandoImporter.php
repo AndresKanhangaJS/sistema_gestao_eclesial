@@ -39,10 +39,16 @@ class CatequizandoImporter extends Importer
                 ->rules(['required', 'string', 'max:200']),
             ImportColumn::make('data_nascimento')
                 ->label('Data de Nascimento')
-                ->requiredMapping()
-                ->helperText('Formato AAAA-MM-DD.')
+                ->helperText('Formato AAAA-MM-DD. Opcional.')
                 ->example('2014-06-15')
-                ->rules(['required', 'date']),
+                ->ignoreBlankState()
+                ->rules(['nullable', 'date']),
+            ImportColumn::make('data_nascimento_aproximada')
+                ->label('Data Aproximada')
+                ->helperText('"sim" ou "não" — se só o ano/idade era conhecido.')
+                ->boolean()
+                ->example('não')
+                ->ignoreBlankState(),
             ImportColumn::make('sexo')
                 ->label('Sexo')
                 ->requiredMapping()

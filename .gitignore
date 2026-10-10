@@ -26,3 +26,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .claude/scheduled_tasks.lock
+
+# Dados pessoais da carga real da Catequese (menores) — nunca no git
+/storage/app/private/importacao-catequese/

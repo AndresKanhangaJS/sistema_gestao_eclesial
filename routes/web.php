@@ -10,7 +10,6 @@ use App\Models\FielCentro;
 use App\Models\Inscricao;
 use App\Models\Movimento;
 use App\Models\Turma;
-use Illuminate\Support\Str;
 use App\Services\BalanceteService;
 use App\Services\BalancoReceitasDespesasService;
 use App\Services\DemonstrativoArrecadacaoService;
@@ -22,6 +21,7 @@ use App\Support\ResolveCentroExportacao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Activitylog\Models\Activity;
 
@@ -444,7 +444,9 @@ Route::middleware('auth')->prefix('relatorios')->name('relatorios.')->group(func
             'Nº' => $indice + 1,
             'Nome' => $catequizando->nome_completo,
             'Centro' => $catequizando->centro->nome,
-            'Data de Nascimento' => $catequizando->data_nascimento->format('d/m/Y'),
+            'Data de Nascimento' => $catequizando->data_nascimento
+                ? $catequizando->data_nascimento->format('d/m/Y').($catequizando->data_nascimento_aproximada ? ' (aprox.)' : '')
+                : '—',
             'Sexo' => $catequizando->sexo === 'M' ? 'Masculino' : 'Feminino',
             'Telefone' => $catequizando->telefone,
             'Estado' => $catequizando->status === 'ativo' ? 'Activo' : 'Inactivo',

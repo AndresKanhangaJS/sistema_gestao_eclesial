@@ -149,8 +149,11 @@ class CatequizandoResource extends Resource
                                     ->maxLength(100),
                                 Forms\Components\DatePicker::make('data_nascimento')
                                     ->label('Data de Nascimento')
-                                    ->required()
                                     ->maxDate(now()),
+                                Forms\Components\Toggle::make('data_nascimento_aproximada')
+                                    ->label('Data aproximada')
+                                    ->helperText('Só o ano/idade era conhecido — corrigir quando houver a data exacta.')
+                                    ->default(false),
                                 Forms\Components\Select::make('sexo')
                                     ->label('Sexo')
                                     ->options([
@@ -281,7 +284,7 @@ class CatequizandoResource extends Resource
                                             ->label('Nome do Grupo')
                                             ->maxLength(150)
                                             ->required()
-                                            ->visible(fn (Forms\Get $get) => $get('pertence_grupo')),
+                                            ->visible(fn (Get $get) => $get('pertence_grupo')),
                                     ]),
                             ]),
                         // So no registo (elimina a volta de registar o Catequizando e
@@ -318,7 +321,7 @@ class CatequizandoResource extends Resource
                                             ->helperText('O conjunto exacto tem de bater certo com a turma escolhida, ex.: "Baptismo e Comunhão" não entra numa turma só de "Baptismo".'),
                                         Forms\Components\Select::make('catequista_id')
                                             ->label('Catequista Responsável')
-                                            ->options(function (Forms\Get $get) {
+                                            ->options(function (Get $get) {
                                                 $user = Auth::user();
                                                 $query = Catequista::query();
 
@@ -372,6 +375,8 @@ class CatequizandoResource extends Resource
                 Tables\Columns\TextColumn::make('data_nascimento')
                     ->label('Data de Nascimento')
                     ->date()
+                    ->placeholder('—')
+                    ->suffix(fn (Catequizando $record) => $record->data_nascimento && $record->data_nascimento_aproximada ? ' (aprox.)' : null)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('sexo')
                     ->label('Sexo')
@@ -514,12 +519,23 @@ class CatequizandoResource extends Resource
      */
     private static function proximoAnoLetivoActivo(Inscricao $inscricaoActual): ?AnoLetivo
     {
-        return AnoLetivo::withoutGlobalScopes()
+        $query = AnoLetivo::withoutGlobalScopes()
             ->where('paroquia_id', $inscricaoActual->paroquia_id)
-            ->where('status', 'em_curso')
-            ->where('data_inicio', '>', $inscricaoActual->anoLetivo->data_inicio)
-            ->orderBy('data_inicio')
-            ->first();
+            ->where('status', 'em_curso');
+
+        $inicioActual = $inscricaoActual->anoLetivo->data_inicio;
+
+        // data_inicio e nullable: com data no ano actual so contam candidatos
+        // que tambem a tenham e sejam posteriores; sem data, compara-se pelo
+        // id (anos lectivos criam-se por ordem cronologica). Ordena por
+        // data_inicio com fallback para id.
+        if ($inicioActual !== null) {
+            $query->whereNotNull('data_inicio')->where('data_inicio', '>', $inicioActual);
+        } else {
+            $query->where('id', '>', $inscricaoActual->anoLetivo->getKey());
+        }
+
+        return $query->orderBy('data_inicio')->orderBy('id')->first();
     }
 
     private static function labelEstadoInscricao(?EstadoInscricao $estado): ?string
