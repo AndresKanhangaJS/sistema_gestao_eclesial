@@ -29,3 +29,6 @@ Thumbs.db
 
 # Dados pessoais da carga real da Catequese (menores) — nunca no git
 /storage/app/private/importacao-catequese/
+
+# Backups da BD gerados pelo deploy.sh (dados pessoais, nunca no git)
+/backups/

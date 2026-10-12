@@ -27,7 +27,7 @@ erro() { printf 'ERRO: %s\n' "$1" >&2; exit 1; }
 # --- 1. Validacoes do .env ---
 passo "A validar .env"
 [ -f .env ] || erro ".env nao existe. Copie .env.example e preencha com valores de producao."
-valor() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | tr -d '"'; }
+valor() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | tr -d '"\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
 
 [ "$(valor APP_ENV)" = "production" ] || erro "APP_ENV tem de ser 'production'."
 [ "$(valor APP_DEBUG)" = "false" ] || erro "APP_DEBUG tem de ser 'false'."
