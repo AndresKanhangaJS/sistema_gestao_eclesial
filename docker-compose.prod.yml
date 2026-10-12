@@ -9,10 +9,7 @@
 
 x-app: &app
   image: sge-app:${IMAGE_TAG:-latest}
-  build:
-    context: .
-    dockerfile: docker/php/Dockerfile.prod
-    target: app
+  pull_policy: never
   restart: unless-stopped
   env_file: .env
   volumes:
@@ -26,8 +23,13 @@ x-app: &app
       condition: service_healthy
 
 services:
+  # Unico servico com build: worker e scheduler reutilizam a mesma imagem.
   app:
     <<: *app
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+      target: app
     container_name: sge_app
     healthcheck:
       test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'"]
