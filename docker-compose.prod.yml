@@ -1,0 +1,110 @@
+# Ambiente de PRODUCAO do SGE. Diferencas face ao docker-compose.yml (dev):
+#   - codigo dentro da imagem (sem bind mount do projecto)
+#   - MySQL e Redis NAO expostos ao exterior (so rede interna)
+#   - nginx escuta so em 127.0.0.1 (o HTTPS fica num proxy do host: Caddy,
+#     Traefik ou nginx + Certbot, a apontar para esta porta)
+#   - credenciais lidas do .env do servidor, sem valores por defeito
+#
+# Uso: ./deploy.sh   (ou: docker compose -f docker-compose.prod.yml up -d --build)
+
+x-app: &app
+  image: sge-app:${IMAGE_TAG:-latest}
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile.prod
+    target: app
+  restart: unless-stopped
+  env_file: .env
+  volumes:
+    - sge_storage:/var/www/html/storage
+  networks:
+    - sge
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *app
+    container_name: sge_app
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+      args:
+        APP_IMAGE: sge-app:${IMAGE_TAG:-latest}
+    image: sge-nginx:${IMAGE_TAG:-latest}
+    container_name: sge_nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
+    volumes:
+      - sge_storage:/var/www/storage:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - sge
+
+  worker:
+    <<: *app
+    container_name: sge_worker
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    stop_grace_period: 60s
+
+  scheduler:
+    <<: *app
+    container_name: sge_scheduler
+    command: >
+      sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+
+  mysql:
+    image: mysql:8.0
+    container_name: sge_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?defina DB_DATABASE no .env}
+      MYSQL_USER: ${DB_USERNAME:?defina DB_USERNAME no .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?defina DB_ROOT_PASSWORD no .env}
+    volumes:
+      - sge_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - sge
+
+  redis:
+    image: redis:7-alpine
+    container_name: sge_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - sge_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - sge
+
+networks:
+  sge:
+    driver: bridge
+
+volumes:
+  sge_mysql_data:
+  sge_redis_data:
+  sge_storage:
