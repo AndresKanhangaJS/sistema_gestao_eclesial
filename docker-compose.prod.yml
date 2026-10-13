@@ -77,10 +77,11 @@ services:
       MYSQL_USER: ${DB_USERNAME:?defina DB_USERNAME no .env}
       MYSQL_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?defina DB_ROOT_PASSWORD no .env}
-    # Porta so em loopback do servidor: para um cliente SQL (HeidiSQL, DBeaver)
-    # chegar la, usar tunel SSH. Nunca mudar para 0.0.0.0.
+    # Por defeito so em loopback do servidor (acesso por tunel SSH). Para
+    # ligacao directa na rede interna, definir DB_BIND=<IP da LAN> no .env
+    # e restringir a porta no firewall. Nunca expor a internet.
     ports:
-      - "127.0.0.1:${DB_HOST_PORT:-3307}:3306"
+      - "${DB_BIND:-127.0.0.1}:${DB_HOST_PORT:-3307}:3306"
     volumes:
       - sge_mysql_data:/var/lib/mysql
     healthcheck:
