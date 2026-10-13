@@ -14,13 +14,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Dados de referencia: necessarios em qualquer ambiente.
         $this->call([
             RoleSeeder::class,
             PermissionSeeder::class,
             CatequeseSeeder::class,
-            TestDataSeeder::class,
-            DemoDataSeeder::class,
-            CatequeseDemoDataSeeder::class,
         ]);
+
+        // Dados de teste/demonstracao (utilizadores com senha "password",
+        // faker): NUNCA em producao.
+        if (! app()->environment('production')) {
+            $this->call([
+                TestDataSeeder::class,
+                DemoDataSeeder::class,
+                CatequeseDemoDataSeeder::class,
+            ]);
+        }
     }
 }

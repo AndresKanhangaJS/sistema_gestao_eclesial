@@ -3,7 +3,8 @@
 #
 #   ./deploy.sh              deploy normal (git pull, build, migrate, restart)
 #   ./deploy.sh --no-pull    nao faz git pull (usa o codigo que ja esta no disco)
-#   ./deploy.sh --seed       corre tambem db:seed --force (so no 1.o deploy)
+#   ./deploy.sh --seed       corre tambem db:seed --force (so no 1.o deploy; em producao
+#                            o DatabaseSeeder so carrega papeis, permissoes e catequese)
 #
 # Requer: docker compose v2, git, e um .env de producao na raiz.
 set -euo pipefail
