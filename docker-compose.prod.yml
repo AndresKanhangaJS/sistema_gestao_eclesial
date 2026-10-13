@@ -81,9 +81,10 @@ services:
       - sge_mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 120s
     networks:
       - sge
 
