@@ -16,6 +16,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'paroquia.scope' => EnsureParoquiaScope::class,
         ]);
+
+        // Em producao o HTTPS termina num proxy (Caddy/nginx/Cloudflare) e o
+        // pedido chega aqui em HTTP: sem confiar nos cabecalhos X-Forwarded-*,
+        // o Laravel gera URLs http:// e o browser bloqueia os assets (ex.: o
+        // grafico do dashboard) como conteudo misto. TRUSTED_PROXIES aceita
+        // '*' (defeito) ou uma lista de IPs/CIDR separados por virgula.
+        $proxies = env('TRUSTED_PROXIES', '*');
+        $middleware->trustProxies(
+            at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)),
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
